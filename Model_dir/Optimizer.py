@@ -44,19 +44,19 @@ class HybridOptim():
                 self.Muon.append(param)
             else:
                 self.AdamW.append(param)
-        
+        self.config=OptimHParams()
         self.opt1=optim.AdamW(
             self.AdamW,
-            lr=OptimHParams.lr,
-            weight_decay=OptimHParams.weight_decay,
+            lr=self.config.lr,
+            weight_decay=self.config.weight_decay,
             fused=True
         )
 
         self.opt2=optim.Muon(
             self.Muon,
-            lr=OptimHParams.lr,
-            weight_decay=OptimHParams.weight_decay,
-            adjust_lr_function="match_rms_adamw"
+            lr=self.config.lr,
+            weight_decay=self.config.weight_decay,
+            adjust_lr_fn="match_rms_adamw"
         )
 
     def Count(self) -> None:
@@ -93,7 +93,13 @@ class Hybrid_Optim_with_Cosine_Scheduler():
             warmup_steps (int): Number of warmup steps for learning rate scheduler
         '''
 
-        self.optim=Optim(model)
+        self.optim = Optim(model)
+        self.opt1 = self.optim.opt1
+        self.opt2 = self.optim.opt2
+
+        if isinstance(OptimHParams, type):
+            OptimHParams = OptimHParams()
+
         self.inital_lr=OptimHParams.lr
         self.final_lr=OptimHParams.final_lr
         self.curr_lr=self.inital_lr
@@ -104,7 +110,7 @@ class Hybrid_Optim_with_Cosine_Scheduler():
     def step(self):
         ''' Updates the learning rate according to the cosine annealing schedule and then calls the step function of the optimizer.'''
         if self.current_step<self.warmup_steps:
-            self.curr_lr=self.inital_lr*self.current_step/self.warmup_steps
+            self.curr_lr=self.inital_lr*(self.current_step+1)/self.warmup_steps
         else:
             self.curr_lr=self.final_lr+(self.curr_lr-self.final_lr)*((1+math.cos((math.pi*(self.current_step+1))/self.total_steps))/(1+math.cos(math.pi*self.current_step/self.total_steps)))
                         

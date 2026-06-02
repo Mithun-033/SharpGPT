@@ -1,7 +1,8 @@
+import torch
 from Model_dir.Model_Classes import GPT
 from Model_dir.Optimizer import Hybrid_Optim_with_Cosine_Scheduler,HybridOptim
-from Model_dir.HyperParam_Classes import Config as GPTConfig
-from Model_dir.HyperParam_Classes import TrainParams,OptimHParams
+from Model_dir.HyperParam_Classes import Config as GPTConfigClass
+from Model_dir.HyperParam_Classes import TrainParams as TrainParamsClass,OptimHParams as OptimHParamsClass
 import lightning.pytorch as pl
 from torchinfo import summary
 import torch.nn as nn
@@ -17,12 +18,19 @@ class Train_Model(pl.LightningModule):
             config (Config DataClass Object): The Config dataclass object containing the hyperparameters of the model.'''
         super().__init__()
         self.save_hyperparameters()
+        self.automatic_optimization = False
 
         self.DataModule=DataModule
         self.model=GPT(config)
-        self.model.compile()
+        
+        try:
+            self.model = torch.compile(self.model)
+        except Exception:
+            print("Torch Compile is not available in your current PyTorch version.")
+            pass
         self.loss_fn=nn.CrossEntropyLoss()
         self.config=config
+        self._hybrid_scheduler = None
 
     def forward(self,x):
         ''' Calls the forward function of the GPT model.
@@ -33,7 +41,7 @@ class Train_Model(pl.LightningModule):
         '''
         return self.model(x)
     
-    def training_step(self,batch):
+    def training_step(self,batch,batch_idx):
         ''' Calls the forward function and calculates the loss for a batch of data.
         Args:            
             batch (Tensor): A batch of input-output pairs of shape (B,T) where B is the batch size and T is the context window length.
@@ -45,6 +53,21 @@ class Train_Model(pl.LightningModule):
 
         loss=self.loss_fn(logits.view(-1,logits.size(-1)),y.view(-1))
         self.log("train_loss",loss,prog_bar=True)
+
+        if self._hybrid_scheduler is None:
+            tp = TrainParamsClass()
+            self._hybrid_scheduler = Hybrid_Optim_with_Cosine_Scheduler(
+                self.model,
+                Optim=HybridOptim,
+                OptimHParams=OptimHParamsClass(),
+                total_steps=tp.epochs*len(self.DataModule.train_dataloader()),
+                warmup_steps=max(1, tp.epochs*len(self.DataModule.train_dataloader())//20),
+            )
+
+        self._hybrid_scheduler.zero_grad()
+        self.manual_backward(loss)
+        self._hybrid_scheduler.step()
+        self.log("lr", self._hybrid_scheduler.curr_lr, prog_bar=True)
         return loss
     
     def validation_step(self,batch):
@@ -66,20 +89,22 @@ class Train_Model(pl.LightningModule):
         Returns:
             optimizer (Optimizer): The configured optimizer for training.
         '''
-        optimizer=Hybrid_Optim_with_Cosine_Scheduler(
+        tp = TrainParamsClass()
+        self._hybrid_scheduler=Hybrid_Optim_with_Cosine_Scheduler(
             self.model,
-            total_steps=TrainParams.epochs*len(self.DataModule.train_dataloader()),
-            warmup_steps=TrainParams.epochs*len(self.DataModule.train_dataloader())//20,
             Optim=HybridOptim,
-            OptimHParams=OptimHParams)
+            OptimHParams=OptimHParamsClass(),
+            total_steps=tp.epochs*len(self.DataModule.train_dataloader()),
+            warmup_steps=max(1, tp.epochs*len(self.DataModule.train_dataloader())//20),
+        )
 
-        return [optimizer.opt1,optimizer.opt2]
+        return [self._hybrid_scheduler.optim.opt1, self._hybrid_scheduler.optim.opt2]
     
     def model_info(self):
         ''' Prints the model summary and the number of parameters in the model.'''
         return summary(self.model,input_size=(1,self.config.cwl))
 
-def run_training(model,DataModule):
+def run_training(model,DataModule,tp):
     ''' Runs the training loop for the model using the Lightning Trainer.
     Args:
         model (Train_Model Class Object): The Train_Model class object containing the GPT model and the training configuration.
@@ -90,11 +115,11 @@ def run_training(model,DataModule):
         accelerator="auto",
         devices="auto",
         precision="16-mixed",
-        max_epochs=TrainParams.epochs,
-        val_check_interval=100*TrainParams.grad_batches//TrainParams.batch_size,
-        log_every_n_steps=20*TrainParams.grad_batches//TrainParams.batch_size,
+        max_epochs=tp.epochs,
+        val_check_interval=100*tp.grad_batches//tp.batch_size,
+        log_every_n_steps=20*tp.grad_batches//tp.batch_size,
         enable_progress_bar=True,
-        accumulate_grad_batches=TrainParams.grad_batches,
+        accumulate_grad_batches=tp.grad_batches,
         gradient_clip_val=1.0,
         logging=True
 
@@ -104,20 +129,23 @@ def run_training(model,DataModule):
 
 if __name__=="__main__":
     print("Preparing DataModule...")
+    cfg = GPTConfigClass()
+    tp = TrainParamsClass()
+
     Datamodule=DataModule(
         file_path="Pre_training_data/Climbmix.npy",
         train_val_split=0.97,
-        batch_size=TrainParams.batch_size,
-        num_workers=TrainParams.num_workers,
-        pre_fetch_factor=TrainParams.pre_fetch_factor,
-        config=GPTConfig)
+        batch_size=tp.batch_size,
+        num_workers=tp.num_workers,
+        pre_fetch_factor=tp.pre_fetch_factor,
+        config=cfg)
     print("DataModule configured!")
 
     print("Preparing Model...")
-    model=GPT(GPTConfig,Datamodule)
+    train_module = Train_Model(cfg, Datamodule)
     print("Model configured!")
 
-    print(model.model_info())
+    print(train_module.model_info())
     print("Training Started...")
-    run_training(model,Datamodule)
+    run_training(train_module,Datamodule,tp)
 

@@ -2,7 +2,7 @@ from torch.utils.data import DataLoader, Dataset
 from lightning.pytorch import LightningDataModule
 import os
 import numpy as np
-from HyperParam_Classes import TrainParams
+
 
 class TokenisedDataset(Dataset):
     ''' A Dataset wrapped class module to return tokenized input-output pairs'''
@@ -30,7 +30,7 @@ class TokenisedDataset(Dataset):
 class DataModule(LightningDataModule):
     ''' Class wrapped around Lightning Data Module to return Train/Val DataLoaders'''
     def __init__(self,file_path,train_val_split,num_workers=2,pin_memory=True,persistent_workers=True,
-                 batch_size=TrainParams.batch_size,prefetch_factor=2,config=None):
+                 batch_size=32,pre_fetch_factor=2,config=None):
         '''
         Initialises the DataModule.
         
@@ -52,9 +52,9 @@ class DataModule(LightningDataModule):
 
         self.num_workers=num_workers
         self.pin_memory=pin_memory
-        self.persistant_workers=persistent_workers
+        self.persistent_workers=persistent_workers
         self.batch_size=batch_size
-        self.prefetch_factor=prefetch_factor
+        self.pre_fetch_factor=pre_fetch_factor
         self.split=train_val_split
         self.config=config
 
@@ -62,33 +62,51 @@ class DataModule(LightningDataModule):
         ''' Checks if data is present '''
         assert self.data is not None , "Dataset Object is not initialised"
 
-    def setup(self):
+    def setup(self, stage=None):
         ''' Setup train and val dataset using predefined class module'''
-        split_val=len(self.data)*self.split
-        self.train_dataset=TokenisedDataset(self.data[:split_val],self.config)
-        self.val_dataset=TokenisedDataset(self.data[split_val:],self.config)
+        split_idx = int(len(self.data) * self.split)
+        self.train_dataset=TokenisedDataset(self.data[:split_idx],self.config)
+        self.val_dataset=TokenisedDataset(self.data[split_idx:],self.config)
 
     def train_dataloader(self):
         ''' Returns Train Dataloader'''
+        if self.num_workers > 0:
+            return DataLoader(
+                self.train_dataset,
+                batch_size=self.batch_size,
+                num_workers=self.num_workers,
+                prefetch_factor=self.pre_fetch_factor,
+                persistent_workers=self.persistent_workers,
+                pin_memory=self.pin_memory,
+                shuffle=True,
+            )
+
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
-            prefetch_factor=self.prefetch_factor,
-            persistent_workers=self.persistant_workers,
             pin_memory=self.pin_memory,
-            shuffle=True
+            shuffle=True,
         )
 
     def val_dataloader(self):
         ''' Returns Val Dataloader'''
+        if self.num_workers > 0:
+            return DataLoader(
+                self.val_dataset,
+                batch_size=self.batch_size,
+                num_workers=self.num_workers,
+                prefetch_factor=self.pre_fetch_factor,
+                persistent_workers=self.persistent_workers,
+                pin_memory=self.pin_memory,
+                shuffle=False,
+            )
+
         return DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
-            prefetch_factor=self.prefetch_factor,
-            persistent_workers=self.persistant_workers,
             pin_memory=self.pin_memory,
-            shuffle=False
+            shuffle=False,
         )
     
