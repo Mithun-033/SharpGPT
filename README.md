@@ -1,5 +1,9 @@
 # MineGPT
 
+<p align="center">
+  <img src="Repo cover image MineGPT.png">
+</p>
+
 MineGPT is a GPT-style autoregressive language model built from scratch using PyTorch and PyTorch Lightning. The project covers the complete language model development pipeline, including tokenizer training, dataset preparation, model implementation, custom optimization, training infrastructure, and domain-specific continued pretraining.
 
 The model is pretrained on **1 billion tokens from NVIDIA ClimbMix** and further trained on **Minecraft Wiki** and **Minecraft Question & Answer datasets** to specialize its knowledge in the Minecraft domain.
@@ -271,8 +275,8 @@ Training is orchestrated through PyTorch Lightning using dedicated Lightning Mod
 
 | Tokenizer | Vocabulary Size |
 |------------|----------------|
-| tokenizer_16k.json | 16,000 |
-| tokenizer_32k.json | 32,000 |
+| tokenizer_16k.json | 16,384 |
+| tokenizer_32k.json | 32,768 |
 
 These tokenizers can be used directly for pretraining, finetuning, and inference workflows.
 
