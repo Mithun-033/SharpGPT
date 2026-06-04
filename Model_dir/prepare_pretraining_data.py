@@ -14,17 +14,17 @@ os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"]="1"
 tok=Tokenizer.from_file("tokenizers_dir/tokenizer_32k.json")
 
 #-----------------------------------------------------------------------------------------
-# ClimbMix 1 Billion Tokens Dataset
+# ClimbMix 2 Billion Tokens Dataset
 #-----------------------------------------------------------------------------------------
 
-def climbmix_1bil():
+def climbmix_2bil():
     '''
     Preprocesses the ClimbMix dataset and saves it as .npy files in the specified directory. 
     Each file contains a shard of the dataset with a maximum of 100 million tokens. 
     The function tokenizes the text data, adds special tokens for beginning and end of sequence, 
     and saves the tokenized data in batches to manage memory usage.
     '''
-    target=1_000_000_000
+    target=2_000_000_000
     count=0
 
     lst=[]
@@ -34,7 +34,7 @@ def climbmix_1bil():
         streaming=True,
         split="train")
     
-    with tqdm(total=target, desc="ClimbMix 1bil", unit="Tokens", mininterval=0.1,miniters=1) as pbar:
+    with tqdm(total=target, desc="ClimbMix 2bil", unit="Tokens", mininterval=0.1,miniters=1) as pbar:
         for row in ds:
             tokenised=tok.encode(row["text"]).ids
             batch_count=len(tokenised)
@@ -47,7 +47,7 @@ def climbmix_1bil():
             pbar.update(batch_count+2)
             lst.extend([2]+tokenised+[3])
 
-            if count>=1_000_000_000:
+            if count>=target:
                 print("Total tokens (Climbmix) :",count)
                 np.save(os.path.join(DATA_DIR,"climbmix.npy"),np.array(lst,dtype=np.uint16))
                 break
@@ -71,7 +71,7 @@ def mine_wiki():
         streaming=True,
         split="train")
 
-    with tqdm(desc="ClimbMix 1bil", unit="Tokens", mininterval=0.1,miniters=1) as pbar:    
+    with tqdm(desc="Mine_wiki", unit="Tokens", mininterval=0.1,miniters=1) as pbar:    
         for row in ds:
             tokenized=tok.encode(row["question"]+"\n"+row["answer"]).ids
             batch_count=len(tokenized)
@@ -102,7 +102,7 @@ def mine_qa():
         streaming=True,
         split="train")
     
-    with tqdm(desc="ClimbMix 1bil", unit="Tokens", mininterval=0.1,miniters=1) as pbar:    
+    with tqdm(desc="Mine_q_a", unit="Tokens", mininterval=0.1,miniters=1) as pbar:    
         for row in ds:
             tokenized=tok.encode(row["question"]+"\n"+row["answer"]).ids
             batch_count=len(tokenized)
@@ -119,7 +119,7 @@ if __name__=="__main__":
     print("Starting Preprocessing...")
 
     print("Downloading Climbmix...")
-    climbmix_1bil()
+    climbmix_2bil()
 
     print("Downloading Minecraft Wiki...")
     mine_wiki()
