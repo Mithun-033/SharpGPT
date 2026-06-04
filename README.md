@@ -83,23 +83,25 @@ This continued training improves performance on Minecraft-related terminology, m
 ```text
 MineGPT/
 │
-├── DataLoaders.py
-├── HyperParam_Classes.py
-├── Model_Classes.py
-├── Optimizer.py
-├── prepare_pretraining_data.py
-├── train.py
-├── rough_file.py
-│
 ├── Model_dir/
+│   ├── DataLoaders.py
+│   ├── HyperParam_Classes.py
+│   ├── Model_Classes.py
+│   ├── Optimizer.py
+│   ├── prepare_pretraining_data.py
+│   ├── rough_file.py
+│   └── train.py
 │
-└── tokenizers_dir/
-    ├── DataPrep.py
-    ├── Tokenizer_train.py
-    ├── tokenizer_16k.json
-    └── tokenizer_32k.json
+├── tokenizers_dir/
+│   ├── DataPrep.py
+│   ├── Tokenizer_train.py
+│   ├── tokenizer_16k.json
+│   └── tokenizer_32k.json
+│
+├── MineGPT2.png
+├── LICENSE
+└── README.md
 ```
-
 ---
 
 ## Component Overview
