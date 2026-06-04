@@ -67,6 +67,7 @@ class Train_Model(pl.LightningModule):
 
         self._hybrid_scheduler.zero_grad()
         self.manual_backward(loss)
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
         self._hybrid_scheduler.step()
         self.log("lr", self._hybrid_scheduler.curr_lr, prog_bar=True)
         return loss
@@ -111,7 +112,7 @@ def run_training(model,DataModule,tp):
         model (Train_Model Class Object): The Train_Model class object containing the GPT model and the training configuration.
         DataModule (DataModule Class Object): The DataModule class object containing the train and validation dataloaders.
     '''
-    
+    checkpoint_dir = os.path.join(os.getcwd(), "checkpoints")
     trainer = pl.Trainer(
         accelerator="auto",
         devices="auto",
@@ -121,11 +122,15 @@ def run_training(model,DataModule,tp):
         log_every_n_steps=20*tp.grad_batches//tp.batch_size,
         enable_progress_bar=True,
         accumulate_grad_batches=tp.grad_batches,
-        gradient_clip_val=1.0,
+        enable_checkpointing=True,
+        default_root_dir=checkpoint_dir,
         logging=True
 
     )
     trainer.fit(model,DataModule)
+    state_dict_path = os.path.join(checkpoint_dir, "minegpt_state_dict.pt")
+    torch.save(model.state_dict(), state_dict_path)
+    print(f"Saved model state_dict to {state_dict_path}")
     
 
 if __name__=="__main__":
