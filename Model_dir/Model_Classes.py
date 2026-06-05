@@ -109,20 +109,22 @@ class MultiHeadAttention(nn.Module):
     - Scaled Dot Product Attention with causal masking
     - XSA (Cross-Attention Self-Alignment) mechanism for improved attention quality
 
-    Architecture flow:
+        Architecture flow:
     1. Input projection via qkv linear layer
     2. Per-head RMSNorm on q and k projections
     3. RoPE application for positional encoding
     4. Scaled dot product attention with causal mask
     5. XSA normalization to align attention outputs
-    6. Output projection back to d_model dimension
+    6. VE (Vector Enhancement) mechanism adds gated residual input to key/value
+    7. Output projection back to d_model dimension
 
     Key features:
     - Uses interleaved RMSNorm per head (head_size, not d_model)
     - Applies RoPE to both query and key tensors
     - Implements causal masking for autoregressive generation
     - XSA mechanism normalizes output by aligned vector sum
-    '''
+    - VE mechanism applies gated residual enhancement using value_embed_rank dimension
+'''
     def __init__(self,config,layer_idx):
         '''
         Initialising the Multi-Head Attention.
@@ -164,8 +166,14 @@ class MultiHeadAttention(nn.Module):
         Calling the forward pass on the attention layers.
         Args:
             x (Tensor): Input Tensor of shape (B,T,C)
+            ve (Tensor, optional): Optional value tensor for VE mechanism
         Returns: 
-            Tensor of shape (B,T,C)
+            Tuple of (Tensor, Tensor) with shapes (B,T,C), (B,T,C)
+        
+        VE Flow:
+        - When `ve` is provided, applies a gated residual enhancement
+        - Uses sigmoid-activated gate from value_embed_rank dimension
+        - Adds gated version of x to v tensor before attention computation
         '''
         B,T,C=x.shape
 
@@ -281,11 +289,16 @@ class Block(nn.Module):
     x -> PreNorm1 -> Attention -> scale -> residual add
     x -> PreNorm2 -> MLP -> scale -> residual add
 
+    VE Flow:
+    - Passes `ve` through attention mechanism with gated residual enhancement
+    - VE output is propagated through the block for subsequent layers
+
     Key features:
     - Uses pre-normalization (RMSNorm before each sub-layer) for stable training
     - Applies uniform scaling factor across both sub-layers
     - Scaling factor depends on model depth (num_layers) for gradient flow
     - Residual connections help mitigate vanishing gradients in deep networks
+    - VE mechanism enables dynamic residual enhancement across transformer blocks
     '''
     def __init__(self,config,layer_idx):
         '''
@@ -339,14 +352,19 @@ class GPT(nn.Module):
     - Final layer normalization
     - Language modeling head with weight tying
 
-    Architecture flow:
+        Architecture flow:
     Input tokens -> Embedding -> [Transformer Blocks] -> Final Norm -> LM Head -> Output logits
+
+    VE Flow:
+    - Passes `ve` through each transformer block with gated residual enhancement
+    - VE is propagated through the entire model for consistent residual modulation
 
     Key features:
     - Weight tying: LM head shares weights with embedding for parameter efficiency
     - Pre-normalization at each block for stable training
     - Causal masking in attention for autoregressive generation
     - Standard initialization scheme (normal for linear, ones for RMSNorm)
+    - VE mechanism enables dynamic residual modulation across all transformer blocks
     '''
     def __init__(self,config):
         '''
@@ -406,11 +424,3 @@ class GPT(nn.Module):
         x=self.final_norm(x)
         x=self.lm_head(x)
         return x
-
-
-
-            
-
-
-
-
