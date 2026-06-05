@@ -47,7 +47,7 @@ class TokenisedDataset(Dataset):
         Returns:
             int: The length of the dataset (total length minus context window).
         '''
-        return max(0, len(self.data) - self.cwl)
+        return (len(self.data)-1)//self.cwl
 
     def __getitem__(self, idx):
         '''Returns a tuple of (input, output) tensors representing a training sample.
@@ -60,6 +60,7 @@ class TokenisedDataset(Dataset):
                 - input_tensor: torch tensor of shape (cwl,) from data[idx:idx+cwl]
                 - output_tensor: torch tensor of shape (cwl,) from data[idx+1:idx+cwl+1]
         '''
+        idx = idx * self.cwl
         x = self.data[idx:idx + self.cwl]
         y = self.data[idx + 1:idx + self.cwl + 1]
         return torch.from_numpy(np.array(x, copy=True)), torch.from_numpy(np.array(y, copy=True))
