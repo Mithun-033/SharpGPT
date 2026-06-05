@@ -9,7 +9,24 @@ TOK_DIR="tokenizers"
 
 def tokenizer_16k():
     ''' Trains a BPE tokenizer with a vocab size of 16,000 using the climbmix, mine_q_a and mine_wiki datasets. 
-    The trained tokenizer is saved as tokenizer_16k.json in the current directory. '''
+    The trained tokenizer is saved as tokenizer_16k.json in the current directory.
+    
+    Configuration Details:
+    - Model: BPE (Byte Pair Encoding)
+    - Pre-tokenizer: Whitespace (splits on whitespace only)
+    - Special Tokens: <PAD>, <UNK>, <BOS>, <EOS>
+    - Vocabulary Size: 16,384 tokens
+    - Output File: tokenizers/tokenizer_16k.json
+    
+    Dataset Requirements:
+    - data/climbmix.txt: Training data (e.g., code or technical documentation)
+    - data/mine_q_a.txt: Question-answer pairs for training
+    - data/mine_wiki.txt: Wiki-style text data
+    
+    Raises:
+        FileNotFoundError: If required data files are missing in the data directory
+        PermissionError: If unable to write to the tokenizers directory
+    '''
 
     tok=Tokenizer(BPE())
     tok.pre_tokenizer=Whitespace()
@@ -30,7 +47,25 @@ def tokenizer_16k():
 
 def tokenizer_32k():
     ''' Trains a BPE tokenizer with a vocab size of 32,000 using the climbmix, mine_q_a and mine_wiki datasets. 
-    The trained tokenizer is saved as tokenizer_32k.json in the current directory. '''
+    The trained tokenizer is saved as tokenizer_32k.json in the current directory.
+    
+    Configuration Details:
+    - Model: BPE (Byte Pair Encoding)
+    - Pre-tokenizer: Whitespace (splits on whitespace only)
+    - Special Tokens: <PAD>, <UNK>, <BOS>, <EOS>
+    - Vocabulary Size: 32,768 tokens
+    - Output File: tokenizers/tokenizer_32k.json
+    
+    Dataset Requirements:
+    - data/climbmix.txt: Training data (e.g., code or technical documentation)
+    - data/mine_q_a.txt: Question-answer pairs for training
+    - data/mine_wiki.txt: Wiki-style text data
+
+    
+    Raises:
+        FileNotFoundError: If required data files are missing in the data directory
+        PermissionError: If unable to write to the tokenizers directory
+    '''
 
     tok=Tokenizer(BPE())
     tok.pre_tokenizer=Whitespace()

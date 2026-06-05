@@ -11,7 +11,19 @@ os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"]="1"
 
 
 def download_climbmix():
-    ''' Downloads the climbmix dataset from HuggingFace to train tokenizer '''
+    ''' Downloads the climbmix dataset from HuggingFace to train tokenizer.
+    
+    This function downloads 75 million words of pre-training data from the 
+    "karpathy/climbmix-400b-shuffle" dataset on HuggingFace. The data is stored 
+    in a text file named "climbmix.txt" within the "data" directory.
+    
+    The download process:
+    - Loads the dataset with streaming=True for memory efficiency
+    - Counts words and updates progress bar in real-time
+    - Writes each text row to the output file
+    - Stops when the target word count (75M) is reached
+    
+    '''
     
     data=load_dataset(
         pre_train_path,
@@ -37,7 +49,20 @@ def download_climbmix():
 
 
 def download_mine_q_a():
-    ''' Downloads the Minecraft Q&A dataset from HuggingFace to train tokenizer '''
+    ''' Downloads the Minecraft Q&A dataset from HuggingFace to train tokenizer.
+    
+    This function downloads 20 million words of Q&A data from the 
+    "minhaozhang/minecraft-question-answer-630k" dataset on HuggingFace. The data 
+    is stored in a text file named "mine_q_a.txt" within the "data" directory.
+    
+    The download process:
+    - Loads the dataset with streaming=True for memory efficiency
+    - Counts words (question + answer) and updates progress bar in real-time
+    - Writes question and answer pairs to the output file
+    - Stops when the target word count (20M) is reached
+    
+
+    '''
 
     data=load_dataset(
         minecraft_path2,
@@ -66,7 +91,19 @@ def download_mine_q_a():
 
 
 def download_mine_wiki():
-    ''' Downloads the MineWiki dataset from HuggingFace to train tokenizer '''
+    ''' Downloads the MineWiki dataset from HuggingFace to train tokenizer.
+    
+    This function downloads 5 million words of training data from the 
+    "lparkourer10/minecraft-wiki" dataset on HuggingFace. The data is stored 
+    in a text file named "mine_wiki.txt" within the "data" directory.
+    
+    The download process:
+    - Loads the dataset with streaming=True for memory efficiency
+    - Counts words (question + answer) and updates progress bar in real-time
+    - Writes question and answer pairs to the output file
+    - Stops when the target word count (5M) is reached
+    
+    '''
 
     data=load_dataset(
         minecraft_path,
