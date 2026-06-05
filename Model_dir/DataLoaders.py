@@ -6,27 +6,63 @@ import torch
 
 
 class TokenisedDataset(Dataset):
-    ''' A Dataset wrapped class module to return tokenized input-output pairs'''
+    ''' A Dataset wrapper class that returns tokenized input-output pairs from numpy arrays.
 
-    def __init__(self,NpArr,config):
+    This class wraps a numpy array and splits it into overlapping input-output sequences based on a context window length (cwl).
+    It is designed to work with datasets where each element represents a sequence, and the dataset needs to be split into
+    overlapping input-output pairs for training.
+
+    Attributes:
+        data (np.ndarray): The numpy array containing the data.
+        cwl (int): Context window length used to determine the size of input sequences.
+    Args:
+        NpArr (np.ndarray): A numpy array containing the data to be processed.
+        config (object): An object with a 'cwl' attribute specifying the context window length.
+
+    Properties:
+        data: The underlying numpy array containing the dataset.
+        cwl: The context window length used for splitting data into input-output pairs.
+
+    Methods:
+        __len__(): Returns the number of samples in the dataset (total length minus context window).
+        __getitem__(idx): Returns a tuple of (input, output) tensors where:
+            - input: A tensor containing the sequence from idx to idx + cwl
+            - output: A tensor containing the sequence from idx+1 to idx + cwl+1
+    '''
+
+    def __init__(self, NpArr, config):
         '''
-        Initialising the Dataset.
-        Args:
-            NpArr (arr): numpy array with mmap_mode set to read.
-        '''
-        self.data=NpArr
-        self.cwl=config.cwl
+        Initialises the TokenisedDataset.
         
+        Args:
+            NpArr (np.ndarray): numpy array with mmap_mode set to read.
+            config (object): Configuration object containing 'cwl' attribute for context window length.
+        '''
+        self.data = NpArr
+        self.cwl = config.cwl
+
     def __len__(self):
-        ''' Returns the length of dataset'''
+        ''' Returns the number of samples in the dataset.
+
+        Returns:
+            int: The length of the dataset (total length minus context window).
+        '''
         return max(0, len(self.data) - self.cwl)
-    
-    def __getitem__(self,idx):
-        '''Returns the input-output pair'''
-        x=self.data[idx:idx+self.cwl]
-        y=self.data[idx+1:idx+self.cwl+1]
+
+    def __getitem__(self, idx):
+        '''Returns a tuple of (input, output) tensors representing a training sample.
+
+        Args:
+            idx (int): Index in the dataset.
+
+        Returns:
+            tuple: A tuple containing (input_tensor, output_tensor) where:
+                - input_tensor: torch tensor of shape (cwl,) from data[idx:idx+cwl]
+                - output_tensor: torch tensor of shape (cwl,) from data[idx+1:idx+cwl+1]
+        '''
+        x = self.data[idx:idx + self.cwl]
+        y = self.data[idx + 1:idx + self.cwl + 1]
         return torch.from_numpy(np.array(x, copy=True)), torch.from_numpy(np.array(y, copy=True))
-    
 
 class DataModule(LightningDataModule):
     ''' Class wrapped around Lightning Data Module to return Train/Val DataLoaders'''
@@ -34,7 +70,7 @@ class DataModule(LightningDataModule):
                  batch_size=32,pre_fetch_factor=2,config=None):
         '''
         Initialises the DataModule.
-        
+
         Args:
             file_path (str): The path of .npy file
             train_val_split (int): The value split number
@@ -110,4 +146,4 @@ class DataModule(LightningDataModule):
             pin_memory=self.pin_memory,
             shuffle=False,
         )
-    
+

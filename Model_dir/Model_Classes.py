@@ -94,16 +94,47 @@ class RopeEmbedding(nn.Module):
 
 class MultiHeadAttention(nn.Module):
     ''' Class definition of Multi-Head Attention with RMSNorm, RoPE, 
-    scaled dot product attention and XSA 
+    scaled dot product attention and XSA.
+
+    This implementation combines:
+    - Rotary Positional Embeddings (RoPE) for positional encoding
+    - RMSNorm normalization before attention computation
+    - Scaled Dot Product Attention with causal masking
+    - XSA (Cross-Attention Self-Alignment) mechanism for improved attention quality
+
+    Architecture flow:
+    1. Input projection via qkv linear layer
+    2. Per-head RMSNorm on q and k projections
+    3. RoPE application for positional encoding
+    4. Scaled dot product attention with causal mask
+    5. XSA normalization to align attention outputs
+    6. Output projection back to d_model dimension
+
+    Key features:
+    - Uses interleaved RMSNorm per head (head_size, not d_model)
+    - Applies RoPE to both query and key tensors
+    - Implements causal masking for autoregressive generation
+    - XSA mechanism normalizes output by aligned vector sum
     '''
     def __init__(self,config):
         '''
         Initialising the Multi-Head Attention.
+
         Args:
-            config :-
-                -> d_model (int)
-                -> head_size (int)
-                -> num_heads (int)
+            config (Config): Configuration object containing:
+                -> d_model (int): Model dimension (must equal head_size * num_heads)
+                -> head_size (int): Dimension per attention head (must be even for RoPE)
+                -> num_heads (int): Number of attention heads
+
+        Attributes:
+            qkv (nn.Linear): Linear projection to 3x hidden dimension
+            q_norm, k_norm (nn.RMSNorm): Per-head normalization layers
+            proj (nn.Linear): Output projection layer
+            rope (RopeEmbedding): Rotary positional embedding module
+            n_head, head_size: Stored configuration values
+
+        Raises:
+            AssertionError: If d_model != head_size * num_heads
         '''
         super().__init__()
 
@@ -159,18 +190,42 @@ class MultiHeadAttention(nn.Module):
 #=================================================================================
 
 class Mlp(nn.Module):
-    ''' 
-    A Multi-Layer Perceptron class definition with Up and Down projecton linear layers 
-    and ReLU square activation.
+    ''' A Multi-Layer Perceptron class with Up and Down projection linear layers 
+    and ReLU squared activation.
+
+    This implementation uses a simplified MLP architecture:
+    1. Up projection from d_model to hidden dimension
+    2. ReLU activation followed by element-wise squaring
+    3. Down projection back to d_model dimension
+
+    The squaring operation creates a non-linear transformation that emphasizes
+    larger values while maintaining the ability to model complex relationships.
+    This design differs from standard GELU/ReLU activations and provides
+    a custom non-linearity for this architecture.
+
+    Architecture flow:
+    x -> up_proj (d_model -> hidden) -> ReLU -> square -> down_proj (hidden -> d_model)
+
+    Key features:
+    - Uses element-wise squaring after ReLU for custom non-linearity
+    - No bias terms in projection layers for parameter efficiency
+    - Hidden dimension controls model capacity
     '''
     def __init__(self,config):
         ''' 
         Initialising Mlp.
 
         Args :
-            Config DataClass :-
-                -> d_model (int)
-                -> hidden_size (int)
+            config (Config): Configuration object containing:
+                -> d_model (int): Input/output dimension
+                -> hidden (int): Intermediate hidden dimension
+
+        Attributes:
+            up_proj (nn.Linear): Linear layer projecting to hidden dimension
+            down_proj (nn.Linear): Linear layer projecting back to d_model
+
+        Raises:
+            AssertionError: If config.hidden is not set or invalid
         '''
         super().__init__()
         self.up_proj=nn.Linear(config.d_model,config.hidden,bias=False)
@@ -195,15 +250,43 @@ class Mlp(nn.Module):
 #=================================================================================
     
 class Block(nn.Module):
-    ''' Class Definition of a Transformer Block '''
+    ''' A Transformer block implementing residual connections with scaled layer normalization.
+
+    This block applies two sequential sub-layers with residual connections:
+    1. Pre-Norm attention sub-layer with RMSNorm
+    2. Pre-Norm MLP sub-layer with RMSNorm
+
+    Both sub-layer outputs are scaled by a factor and added to the input
+    via residual connections, creating a residual stream that propagates
+    information through the network depth.
+
+    Architecture flow:
+    x -> PreNorm1 -> Attention -> scale -> residual add
+    x -> PreNorm2 -> MLP -> scale -> residual add
+
+    Key features:
+    - Uses pre-normalization (RMSNorm before each sub-layer) for stable training
+    - Applies uniform scaling factor across both sub-layers
+    - Scaling factor depends on model depth (num_layers) for gradient flow
+    - Residual connections help mitigate vanishing gradients in deep networks
+    '''
     def __init__(self,config):
         '''
-        Initialisng the Block.
+        Initialising the Block.
 
         Args:
-            config :-
-                -> d_model (int)
-                -> num_layer (int)
+            config (Config): Configuration object containing:
+                -> d_model (int): Model dimension for all layers
+                -> num_layers (int): Total number of transformer blocks in model
+
+        Attributes:
+            PreNorm1, PreNorm2 (nn.RMSNorm): Layer normalization before sub-layers
+            attention (MultiHeadAttention): Multi-head attention mechanism
+            Mlp (Mlp): Feed-forward network with ReLU squared activation
+            scale (float): Scaling factor for residual connections
+
+        Raises:
+            AssertionError: If config.num_layers is not set or invalid
         '''
         super().__init__()
         self.PreNorm1=nn.RMSNorm(config.d_model,eps=1e-5)
@@ -229,18 +312,44 @@ class Block(nn.Module):
 #=================================================================================
 
 class GPT(nn.Module):
-    ''' Class definition of the GPT model with token embedding, transformer blocks, final layer norm and language modelling head.'''
+    ''' A GPT (Generative Pre-trained Transformer) model for language modeling.
+
+    This implementation follows the standard transformer architecture with:
+    - Token embedding layer
+    - Stacked transformer blocks with residual connections
+    - Final layer normalization
+    - Language modeling head with weight tying
+
+    Architecture flow:
+    Input tokens -> Embedding -> [Transformer Blocks] -> Final Norm -> LM Head -> Output logits
+
+    Key features:
+    - Weight tying: LM head shares weights with embedding for parameter efficiency
+    - Pre-normalization at each block for stable training
+    - Causal masking in attention for autoregressive generation
+    - Standard initialization scheme (normal for linear, ones for RMSNorm)
+    '''
     def __init__(self,config):
         '''
         Initialising the GPT model.
+
         Args:
-            config :-
-                -> d_model (int)
-                -> num_layer (int)
-                -> head_size (int)
-                -> num_heads (int)
-                -> hidden (int)
-                -> vocab_size (int)
+            config (Config): Configuration object containing:
+                -> d_model (int): Model dimension (hidden size)
+                -> num_layers (int): Number of transformer blocks
+                -> head_size (int): Dimension per attention head (must be even)
+                -> num_heads (int): Number of attention heads
+                -> hidden (int): MLP hidden dimension
+                -> vocab_size (int): Vocabulary size for token embedding
+
+        Attributes:
+            embed (nn.Embedding): Token embedding layer
+            blocks (nn.ModuleList): List of transformer blocks
+            final_norm (nn.RMSNorm): Final layer normalization
+            lm_head (nn.Linear): Language modeling head with weight tying
+
+        Raises:
+            AssertionError: If config parameters are invalid or inconsistent
         '''
         super().__init__()
 
@@ -281,5 +390,7 @@ class GPT(nn.Module):
 
 
             
+
+
 
 
