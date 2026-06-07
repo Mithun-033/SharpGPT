@@ -25,7 +25,7 @@ class Config:
     """
     cwl : int = 1024
     d_model : int = 768
-    num_layers : int = 16
+    num_layers : int = 20
     head_size : int = 64
     num_heads : int = 12
     hidden : int = d_model*4

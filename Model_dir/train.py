@@ -1,167 +1,138 @@
+import time
+from tqdm import tqdm
+import numpy as np
 import torch
-import os
-from Model_dir.Model_Classes import GPT
-from Model_dir.Optimizer import Hybrid_Optim_with_Cosine_Scheduler,HybridOptim
-from Model_dir.HyperParam_Classes import Config as GPTConfigClass
-from Model_dir.HyperParam_Classes import TrainParams as TrainParamsClass,OptimHParams as OptimHParamsClass
-import lightning.pytorch as pl
-from torchinfo import summary
 import torch.nn as nn
-from Model_dir.DataLoaders import DataModule
+
+from Model_Classes import GPT
+from HyperParam_Classes import TrainParams, Config, OptimHParams
+from Optimizer import Hybrid_Optim_with_Cosine_Scheduler,HybridOptim
+from DataLoaders import DataModule
+from torchinfo import summary
 
 
-class Train_Model(pl.LightningModule):
-    '''Class wrapped around Lightning Module to train the GPT model using the Hybrid Optimizer with Cosine Scheduler.'''
-    def __init__(self,config,DataModule):
-        '''
-        Initialises the class.
-        Args:
-            config (Config DataClass Object): The Config dataclass object containing the hyperparameters of the model.'''
-        super().__init__()
-        self.save_hyperparameters()
-        self.automatic_optimization = False
+def get_dataloaders(config,tp,file_path):
+    '''Initialises the DataModule and returns the Train and Validation DataLoaders.
 
-        self.DataModule=DataModule
-        self.model=GPT(config)
-        
-        if os.getenv("MINEGPT_ENABLE_COMPILE", "0") == "1":
-            try:
-                self.model = torch.compile(self.model)
-            except Exception:
-                print("Torch Compile is not available in your current PyTorch version.")
-        self.loss_fn=nn.CrossEntropyLoss()
-        self.config=config
-        self._hybrid_scheduler = None
-
-    def forward(self,x):
-        ''' Calls the forward function of the GPT model.
-        Args:
-            x (Tensor): Input Tensor of shape (B,T) where B is the batch size and T is the context window length.
-        Returns:
-            Tensor of shape (B,T,C) where C is the vocab size.
-        '''
-        return self.model(x)
-    
-    def training_step(self,batch,batch_idx):
-        ''' Calls the forward function and calculates the loss for a batch of data.
-        Args:            
-            batch (Tensor): A batch of input-output pairs of shape (B,T) where B is the batch size and T is the context window length.
-        Returns:
-            loss (Tensor): The calculated loss for the batch.
-        '''
-        x,y=batch
-        logits=self(x)
-
-        loss=self.loss_fn(logits.view(-1,logits.size(-1)),y.view(-1))
-        self.log("train_loss",loss,prog_bar=True)
-
-        if self._hybrid_scheduler is None:
-            tp = TrainParamsClass()
-            self._hybrid_scheduler = Hybrid_Optim_with_Cosine_Scheduler(
-                self.model,
-                Optim=HybridOptim,
-                OptimHParams=OptimHParamsClass(),
-                total_steps=tp.epochs*len(self.DataModule.train_dataloader()),
-                warmup_steps=max(1, tp.epochs*len(self.DataModule.train_dataloader())//20),
-            )
-
-        self._hybrid_scheduler.zero_grad()
-        self.manual_backward(loss)
-        self.clip_gradients(
-            self._hybrid_scheduler.optim.opt1,
-            gradient_clip_val=1.0,
-            gradient_clip_algorithm="norm",
-        )
-        self.clip_gradients(
-            self._hybrid_scheduler.optim.opt2,
-            gradient_clip_val=1.0,
-            gradient_clip_algorithm="norm",
-        )
-        self._hybrid_scheduler.step()
-        self.log("lr", self._hybrid_scheduler.curr_lr, prog_bar=True)
-        return loss
-    
-    def validation_step(self,batch,batch_idx=None):
-        ''' Calls the forward function and calculates the loss for a batch of validation data.
-        Args:            
-            batch (Tensor): A batch of input-output pairs of shape (B,T) where B is the batch size and T is the context window length.
-        Returns:
-            loss (Tensor): The calculated loss for the batch.
-        '''
-        x,y=batch
-        logits=self(x)
-
-        loss=self.loss_fn(logits.view(-1,logits.size(-1)),y.view(-1))
-        self.log("val_loss",loss,prog_bar=True)
-        return loss
-    
-    def configure_optimizers(self):
-        ''' Configures the optimizers for training using the Hybrid Optimizer with Cosine Scheduler.
-        Returns:
-            optimizer (Optimizer): The configured optimizer for training.
-        '''
-        tp = TrainParamsClass()
-        self._hybrid_scheduler=Hybrid_Optim_with_Cosine_Scheduler(
-            self.model,
-            Optim=HybridOptim,
-            OptimHParams=OptimHParamsClass(),
-            total_steps=tp.epochs*len(self.DataModule.train_dataloader()),
-            warmup_steps=max(1, tp.epochs*len(self.DataModule.train_dataloader())//20),
-        )
-
-        return [self._hybrid_scheduler.optim.opt1, self._hybrid_scheduler.optim.opt2]
-    
-    def model_info(self):
-        ''' Prints the model summary and the number of parameters in the model.'''
-        return summary(self.model,input_size=(1,self.config.cwl))
-
-def run_training(model,DataModule,tp):
-    ''' Runs the training loop for the model using the Lightning Trainer.
     Args:
-        model (Train_Model Class Object): The Train_Model class object containing the GPT model and the training configuration.
-        DataModule (DataModule Class Object): The DataModule class object containing the train and validation dataloaders.
-    '''
-    checkpoint_dir = os.path.join(os.getcwd(), "checkpoints")
-    trainer = pl.Trainer(
-        accelerator="auto",
-        devices="auto",
-        precision="16-mixed",
-        max_epochs=tp.epochs,
-        val_check_interval=100*tp.grad_batches//tp.batch_size,
-        log_every_n_steps=20*tp.grad_batches//tp.batch_size,
-        enable_progress_bar=True,
-        accumulate_grad_batches=tp.grad_batches,
-        enable_checkpointing=True,
-        default_root_dir=checkpoint_dir,
-        logger=True
+        config (Config): Configuration object containing hyperparameters including context window length (cwl).
+        file_path (str): Path to the data file.
 
+    Returns:
+        tuple: A tuple containing (train_dataloader, val_dataloader) where:
+            - train_dataloader (DataLoader): The training data loader.
+            - val_dataloader (DataLoader): The validation data loader.
+    '''
+    data_module = DataModule(
+        file_path=file_path,
+        train_val_split=0.9998,
+        num_workers=tp.num_workers,
+        pin_memory=True,
+        persistent_workers=True,
+        batch_size=tp.batch_size,
+        pre_fetch_factor=tp.pre_fetch_factor,
+        config=config
     )
-    trainer.fit(model,DataModule)
-    if trainer.is_global_zero:
-        state_dict_path = os.path.join(checkpoint_dir, "minegpt_state_dict.pt")
-        torch.save(model.state_dict(), state_dict_path)
-        print(f"Saved model state_dict to {state_dict_path}")
+    data_module.prepare_data()
+    data_module.setup()
+    return data_module.train_dataloader(), data_module.val_dataloader()
+
+def get_optimizer(model, tp, op, gp):
+    '''Initialises the Hybrid Optimizer with Cosine Scheduler.
+
+    Args:
+        op (OptimHParams): Optimization hyperparameters including learning rate and weight decay.
+        model (GPT): The GPT model instance for which the optimizer is being created.
+        tp (TrainParams): Training parameters including batch size and number of workers.
+        gp (Config): Model configuration parameters including context window length and embedding dimensions.
+    '''
     
+
+    optimizer = Hybrid_Optim_with_Cosine_Scheduler(
+        model,
+        HybridOptim(),
+        op,
+        total_steps=int(0.9 * 2_000_000_000/(tp.grad_batches*gp.cwl)),
+        warmup_steps=int(0.1 * 2_000_000_000/(tp.grad_batches*gp.cwl))
+    )
+    return optimizer
+
+def train():
+    '''Main training loop for the GPT model.
+    This function initializes the model, optimizer, and data loaders, 
+    and then iterates through the training data to perform optimization steps. 
+    It also periodically evaluates the model on the validation set and prints training and validation loss.
+    '''
+    tp=TrainParams()
+    gp=Config()
+    op=OptimHParams()
+
+    model=GPT(gp)
+    model=torch.compile(model)
+    print(summary(model,input_size=(tp.batch_size,gp.cwl),dtypes=[torch.long]))
+
+    optimizer=get_optimizer(model,tp,op,gp)
+    loss_fn=nn.CrossEntropyLoss()
+
+    val_dataloader=None
+
+    with tqdm(total=2_000_000_000, desc="Training", unit="Tokens") as pbar:
+        for i in range(10):
+            file_path=f"Pre_train_data/climbmix_{i+1}.npy"
+            if val_dataloader is None:
+                train_dataloader,val_dataloader=get_dataloaders(gp, tp, file_path)
+            else:
+                train_dataloader,_=get_dataloaders(gp, tp, file_path)
+
+            batch_count=0
+            loss_sum=0
+            opt_steps=0
+            start=time.time()
+
+            for x,y in train_dataloader:
+
+                out=model(x)
+                loss=loss_fn(out.view(-1,gp.vocab_size),y.view(-1))
+
+                loss.backward()
+                loss_sum+=loss.item()
+
+                batch_count+=tp.batch_size
+                pbar.update(tp.batch_size*gp.cwl)
+
+                if batch_count>=tp.grad_batches:
+                    optimizer.zero_grad()
+                    optimizer.step()
+                    batch_count=0
+                    opt_steps+=1
+
+                if opt_steps%20==0:
+                    print(f"Loss: {loss_sum/(20*(tp.grad_batches/tp.batch_size)):.4f}, Time : {time.time()-start:.2f} seconds")
+                    loss_sum=0
+                    start=time.time()
+
+                if opt_steps%100==0:
+                    val_loss_sum=0
+                    val_batch_count=0
+
+                    with torch.no_grad():
+                        for x,y in val_dataloader:
+                            out=model(x)
+                            loss=loss_fn(out.view(-1,gp.vocab_size),y.view(-1))
+                            val_loss_sum+=loss.item()
+                            val_batch_count+=tp.batch_size
+
+                    print(f"Validation Loss: {val_loss_sum/val_batch_count:.4f}")
 
 if __name__=="__main__":
-    print("Preparing DataModule...")
-    cfg = GPTConfigClass()
-    tp = TrainParamsClass()
+    train()
 
-    Datamodule=DataModule(
-        file_path="Pre_training_data/Climbmix.npy",
-        train_val_split=0.97,
-        batch_size=tp.batch_size,
-        num_workers=tp.num_workers,
-        pre_fetch_factor=tp.pre_fetch_factor,
-        config=cfg)
-    print("DataModule configured!")
 
-    print("Preparing Model...")
-    train_module = Train_Model(cfg, Datamodule)
-    print("Model configured!")
 
-    print(train_module.model_info())
-    print("Training Started...")
-    run_training(train_module,Datamodule,tp)
 
+
+
+
+
+
+    
