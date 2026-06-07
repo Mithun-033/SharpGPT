@@ -49,7 +49,6 @@ def climbmix_2bil():
             lst.extend([2]+tokenised+[3])
 
             if count>=target//10:
-                print("Total tokens (Climbmix) :",count)
                 np.save(os.path.join(DATA_DIR,f"climbmix_{shard}.npy"),np.array(lst,dtype=np.uint16))
                 shard+=1
                 lst=[]
