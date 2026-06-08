@@ -9,38 +9,34 @@ MineGPT is a GPT-style autoregressive language model built from scratch using Py
 The model is pretrained on **1 billion tokens from NVIDIA ClimbMix** and further trained on **Minecraft Wiki** and **Minecraft Question & Answer datasets** to specialize its knowledge in the Minecraft domain.
 
 ---
+## Model Architecture
+
+```mermaid
 flowchart TD
-    A[Input Text] --> B[BPE Tokenizer<br/>Whitespace pre-tokenizer]
-    B --> C[Token IDs (+ BOS/EOS)]
+    A[Input Text] --> B[BPE Tokenizer]
+    B --> C[Token IDs]
 
-    C --> D[Token Embedding]
-    C --> VE[Value Embedding Branch<br/>(enabled on alternating layers: 9/18)]
+    C --> D[Token Embeddings]
+    D --> X[Residual Stream]
 
-    D --> X0[Residual Stream x]
-    X0 --> N1
+    X --> T[18× Transformer Blocks]
 
-    subgraph TBLOCK["Transformer Block (Pre-Norm) × 18"]
+    subgraph Block["Transformer Block"]
         N1[RMSNorm]
-        GQA[GQA Self-Attention<br/>Q heads: 16, KV heads: 4<br/>Q/K RMSNorm + RoPE + Causal SDPA + XSA]
-        R1[Scaled Residual Add<br/>x = x + attn / sqrt(2L)]
+        GQA[GQA Attention]
+        VE[Value Embeddings<br/>Alternating Layers]
         N2[RMSNorm]
-        FFN[FFN<br/>Linear → ReLU² → Linear]
-        R2[Scaled Residual Add<br/>x = x + ffn / sqrt(2L)]
+        FFN[ReLU² FFN]
 
-        N1 --> GQA --> R1 --> N2 --> FFN --> R2
-        VE -. optional VE injection into V .-> GQA
+        N1 --> GQA --> N2 --> FFN
+        VE -.-> GQA
     end
 
-    R2 --> FN[Final RMSNorm]
-    FN --> H[LM Head (Linear to Vocab)]
-    D -. weight tying .-> H
+    T --> FN[Final RMSNorm]
+    FN --> H[LM Head]
     H --> O[Output Logits]
-
-    %% Training branch
-    C --> T[Shifted Targets]
-    O --> L[Cross-Entropy Loss]
-    T --> L
-    
+```
+---
 ## Features
 
 ### Architecture
