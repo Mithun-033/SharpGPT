@@ -6,7 +6,7 @@
 
 MineGPT is a GPT-style autoregressive language model built from scratch using PyTorch and PyTorch Lightning. The project covers the complete language model development pipeline, including tokenizer training, dataset preparation, model implementation, custom optimization, training infrastructure, and domain-specific continued pretraining.
 
-The model is pretrained on **1 billion tokens from NVIDIA ClimbMix** and further trained on **Minecraft Wiki** and **Minecraft Question & Answer datasets** to specialize its knowledge in the Minecraft domain.
+The model is pretrained on **2 billion tokens from NVIDIA ClimbMix** and further trained on **Minecraft Wiki** and **Minecraft Question & Answer datasets** to specialize its knowledge in the Minecraft domain.
 
 ---
 
@@ -18,29 +18,23 @@ The model is pretrained on **1 billion tokens from NVIDIA ClimbMix** and further
 - Rotary Positional Embeddings (RoPE)
 - RMSNorm normalization
 - Pre-Norm Transformer blocks
-- Multi-Head Self Attention
-- PyTorch Scaled Dot Product Attention (SDPA)
+- GQA with 4 kv heads & 16 Q heads
 - Flash Attention kernels when supported by hardware
 - Query RMSNorm
 - Key RMSNorm
 - ReLU² feed-forward networks
 - DeepSeek style scaled Residual paths [1 / √(2L)]
 - Weight tying between token embeddings and output projection head
+- ALternate Layer value embeddings 
 
-### Optimization
-
-- Custom Muon–AdamW hybrid optimizer
-- Hand-built learning rate scheduler
-- Modular optimizer implementation
-- Decoupled optimization pipeline
 
 ### Training Infrastructure
-
-- PyTorch Lightning Trainer
+- Custom Muon–AdamW hybrid optimizer
 - PyTorch Lightning DataModule
 - Dataclass-driven hyperparameter management
 - Modular training pipeline
 - Reproducible experiment configuration
+- Modular optimizer implementation
 
 ### Data Pipeline
 
@@ -65,7 +59,7 @@ The model is pretrained on **1 billion tokens from NVIDIA ClimbMix** and further
 
 MineGPT is pretrained on:
 
-- **1 Billion Tokens of NVIDIA ClimbMix**
+- **2 Billion Tokens of NVIDIA ClimbMix**
 
 ### Continued Pretraining
 
@@ -97,7 +91,10 @@ MineGPT/
 │   ├── Tokenizer_train.py
 │   ├── tokenizer_16k.json
 │   └── tokenizer_32k.json
-│
+├── val_loss
+    ├── training_log.json
+    ├── val_delta_loss.png
+    ├── val_loss.png
 ├── MineGPT2.png
 ├── LICENSE
 └── README.md
@@ -155,7 +152,6 @@ Contains:
 
 Contains:
 
-- PyTorch Lightning training workflow
 - Model initialization
 - Trainer configuration
 - Training loop orchestration
