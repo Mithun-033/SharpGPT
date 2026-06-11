@@ -9,8 +9,11 @@ from HyperParam_Classes import Config, OptimHParams_FT, TrainParams
 import time
 import json 
 from tqdm import tqdm
-
+import warnings
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+torch.set_float32_matmul_precision("high")
+warnings.filterwarnings("ignore", category=UserWarning)
 
 def get_optimizer(model, tp, gp, epochs):
     '''Initialises the Hybrid Optimizer with Cosine Scheduler.
@@ -86,9 +89,8 @@ def finetune(model,epochs=2):
 
                         torch.save({
                             "model": model.state_dict(),
-                            "optimizer": optimizer.state_dict(),
                             "step": opt_steps
-                        },"checkpoint.pt")
+                        },"checkpoint_finetuned.pt")
 
                         model.eval()
                         with torch.no_grad():
@@ -103,13 +105,14 @@ def finetune(model,epochs=2):
 
                         print(f"Validation Loss: {val_loss_sum/val_batch_count:.4f}")
                         model.train()
-                        with open("training_log.json","a") as f:
+                        with open("training_log_finetuned.json","a") as f:
                             json.dump({
                                 "step": opt_steps,
                                 "val_loss": val_loss_sum/val_batch_count
                             },f)
                             f.write("\n")
-
+            torch.save(model.state_dict(),f"finetuned_model_{epoch}.pt")
+            
 if __name__ == "__main__":
     gp=Config()
     tp=TrainParams()

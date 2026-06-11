@@ -1,4 +1,5 @@
 import time
+import warnings
 from tqdm import tqdm
 import torch
 import torch.nn as nn
@@ -12,6 +13,8 @@ from torchinfo import summary
 import json
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+torch.set_float32_matmul_precision("high")
+warnings.filterwarnings("ignore", category=UserWarning)
 
 def get_dataloaders(config,tp,file_path):
     '''Initialises the DataModule and returns the Train and Validation DataLoaders.
