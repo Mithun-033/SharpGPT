@@ -38,8 +38,6 @@ def tokenizer_16k():
     tok.train(
         files=[
             os.path.join(DATA_DIR,"climbmix.txt"),
-            os.path.join(DATA_DIR,"mine_q_a.txt"),
-            os.path.join(DATA_DIR,"mine_wiki.txt")
         ],
         trainer=trainer
     )
@@ -76,13 +74,11 @@ def tokenizer_32k():
     )
     tok.train(
         files=[
-            os.path.join(DATA_DIR,"climbmix.txt"),
-            os.path.join(DATA_DIR,"mine_q_a.txt"),
-            os.path.join(DATA_DIR,"mine_wiki.txt")
+            os.path.join(DATA_DIR,"climbmix_200.txt"),
         ],
         trainer=trainer
     )
-    tok.save(os.path.join(TOK_DIR, "tokenizer_32k.json"))
+    tok.save(os.path.join(TOK_DIR, "tokenizer_32k_2.json"))
 
 if __name__=="__main__":
     os.makedirs(TOK_DIR,exist_ok=True)

@@ -31,8 +31,8 @@ def download_climbmix():
         streaming=True 
     )
     count=0
-    target_words=75_000_000
-    with open(os.path.join(ROOT_DIR,"climbmix.txt"),"w",encoding="utf-8") as f:
+    target_words=200_000_000
+    with open(os.path.join(ROOT_DIR,"climbmix_200.txt"),"w",encoding="utf-8") as f:
         with tqdm(total=target_words,desc="Climbmix",unit="words",mininterval=0.1,miniters=5) as pbar:
             for row in data:
                 text=row["text"]
@@ -138,10 +138,10 @@ if __name__=="__main__":
     download_climbmix()
     print("Climbix downloaded...\n")
 
-    download_mine_q_a()
-    print("Q&A downloaded...\n")
+    # download_mine_q_a()
+    # print("Q&A downloaded...\n")
 
-    download_mine_wiki()
-    print("Mine-Wiki downloaded...\n")
+    # download_mine_wiki()
+    # print("Mine-Wiki downloaded...\n")
 
-    print("Downloading completed.")
+    # print("Downloading completed.")
