@@ -21,12 +21,12 @@ SharpGPT is pretrained on **6 billion tokens of NVIDIA ClimbMix** and serves as 
 | KV Heads | 4 |
 | Head Dimension | 64 |
 | MLP Dimension | 4,096 |
-| Vocabulary Size | 32,786 |
-| Value Embedding Rank | 16 |
-| Backbone Parameters | ~224M |
-| Token Embeddings | ~69M |
-| Value Embeddings | ~330M |
-| Total Parameters | ~623M |
+| Vocabulary Size | 49,152 |
+| VE Gate Rank | 16 |
+| Backbone Parameters | ~214.23M |
+| Token Embeddings | ~106.66M |
+| Value Embeddings | ~503.33M |
+| Total Parameters | ~824.22M |
 
 ---
 
@@ -94,9 +94,14 @@ Project/
 │   └── train.py
 │
 ├── tokenizers_dir/
+│   ├── Compression_ratios.json
 │   ├── DataPrep.py
+│   ├── tokenizer_32k_ByteLevel.json
+│   ├── tokenizer_32k_whitespace.json
+│   ├── tokenizer_49k_ByteLevel.json
+│   ├── tokenizer_49k_whitespace.json
 │   ├── Tokenizer_train.py
-│   └── tokenizer_32k.json
+│   └── tokenizers_benchmark.py
 │
 ├── val_loss/
 │   ├── training_log.json
@@ -181,9 +186,12 @@ where **L** is the number of Transformer layers.
 
 ## Available Tokenizers
 
-| Tokenizer | Vocabulary Size |
-|------------|------------|
-| tokenizer_32k.json | 32,768 |
+| Tokenizer                     | Vocabulary Size |
+|------------------------------|-----------------|
+| tokenizer_32k_ByteLevel.json | 32,768          |
+| tokenizer_32k_whitespace.json| 32,768          |
+| tokenizer_49k_ByteLevel.json | 49,152          |
+| tokenizer_49k_whitespace.json| 49,152          |
 
 ---
 
