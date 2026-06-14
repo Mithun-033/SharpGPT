@@ -24,7 +24,7 @@ class Config:
     """
     cwl : int = 1024
     d_model : int = 1024
-    num_layers : int = 18
+    num_layers : int = 20
     head_size : int = 64
     num_heads : int = 16
     kv_heads: int = 4
@@ -53,6 +53,7 @@ class OptimHParams:
     weight_decay : int = 0.1
     lr_decay : float = 0.1
     final_lr : float = lr * lr_decay
+    betas : list = [0.9,0.95]
 
 @dataclass 
 class OptimHParams_FT:
