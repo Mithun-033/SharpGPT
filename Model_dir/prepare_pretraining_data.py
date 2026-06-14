@@ -24,7 +24,7 @@ def climbmix_2bil():
     The function tokenizes the text data, adds special tokens for beginning and end of sequence, 
     and saves the tokenized data in batches to manage memory usage.
     '''
-    target=2_000_000_000
+    target=6_000_000_000
     count=0
     shard=1
 
@@ -45,7 +45,7 @@ def climbmix_2bil():
             pbar.update(batch_count+2)
             lst.extend([2]+tokenised+[3])
 
-            if count>=target//10:
+            if count>=target//30:
                 np.save(os.path.join(DATA_DIR,f"climbmix_{shard}.npy"),np.array(lst,dtype=np.uint16))
                 shard+=1
                 lst=[]
@@ -59,75 +59,69 @@ def climbmix_2bil():
 # Minecraft Wiki Dataset
 #-----------------------------------------------------------------------------------------
 
-def mine_wiki():
-    '''
-    Preprocesses the Minecraft Wiki dataset and saves it as a .npy file in the specified directory.
-    The function tokenizes the text data, adds special tokens for beginning and end of sequence,
-    and saves the tokenized data in a single .npy file.
-    '''
+# def mine_wiki():
+#     '''
+#     Preprocesses the Minecraft Wiki dataset and saves it as a .npy file in the specified directory.
+#     The function tokenizes the text data, adds special tokens for beginning and end of sequence,
+#     and saves the tokenized data in a single .npy file.
+#     '''
 
-    lst=[]
-    count=0
+#     lst=[]
+#     count=0
 
-    ds=load_dataset(
-        minecraft_path,
-        streaming=True,
-        split="train")
+#     ds=load_dataset(
+#         minecraft_path,
+#         streaming=True,
+#         split="train")
 
-    with tqdm(desc="Mine_wiki", unit="Tokens", mininterval=0.1,miniters=1) as pbar:    
-        for row in ds:
-            tokenized=tok.encode("Question :"+row["question"]+"\n"+"Answer :"+row["answer"]).ids
-            batch_count=len(tokenized)
-            count+=batch_count+2
-            lst.extend([2]+tokenized+[3])
+#     with tqdm(desc="Mine_wiki", unit="Tokens", mininterval=0.1,miniters=1) as pbar:    
+#         for row in ds:
+#             tokenized=tok.encode("Question :"+row["question"]+"\n"+"Answer :"+row["answer"]).ids
+#             batch_count=len(tokenized)
+#             count+=batch_count+2
+#             lst.extend([2]+tokenized+[3])
 
-            pbar.update(batch_count+2)
+#             pbar.update(batch_count+2)
         
-    np.save(os.path.join(DATA_DIR,"mine_wiki.npy"),np.array(lst,dtype=np.uint16))
-    print(f"Total Tokens (Mine-wiki): {count}")
+#     np.save(os.path.join(DATA_DIR,"mine_wiki.npy"),np.array(lst,dtype=np.uint16))
+#     print(f"Total Tokens (Mine-wiki): {count}")
 
-#-----------------------------------------------------------------------------------------
-# Minecraft - Q&A Dataset
-#-----------------------------------------------------------------------------------------
+# #-----------------------------------------------------------------------------------------
+# # Minecraft - Q&A Dataset
+# #-----------------------------------------------------------------------------------------
 
-def mine_qa():
-    '''
-    Preprocesses the Minecraft Q&A dataset and saves it as a .npy file in the specified directory.
-    The function tokenizes the text data, adds special tokens for beginning and end of sequence,
-    and saves the tokenized data in a single .npy file.
-    '''
+# def mine_qa():
+#     '''
+#     Preprocesses the Minecraft Q&A dataset and saves it as a .npy file in the specified directory.
+#     The function tokenizes the text data, adds special tokens for beginning and end of sequence,
+#     and saves the tokenized data in a single .npy file.
+#     '''
 
-    lst=[]
-    count=0
+#     lst=[]
+#     count=0
 
-    ds=load_dataset(
-        minecraft_path2,
-        streaming=True,
-        split="train")
+#     ds=load_dataset(
+#         minecraft_path2,
+#         streaming=True,
+#         split="train")
     
-    with tqdm(desc="Mine_q_a", unit="Tokens", mininterval=0.1,miniters=1) as pbar:    
-        for row in ds:
-            tokenized=tok.encode("Question :"+row["question"]+"\n"+"Answer :"+row["answer"]).ids
-            batch_count=len(tokenized)
-            count+=batch_count+2
-            lst.extend([2]+tokenized+[3])
+#     with tqdm(desc="Mine_q_a", unit="Tokens", mininterval=0.1,miniters=1) as pbar:    
+#         for row in ds:
+#             tokenized=tok.encode("Question :"+row["question"]+"\n"+"Answer :"+row["answer"]).ids
+#             batch_count=len(tokenized)
+#             count+=batch_count+2
+#             lst.extend([2]+tokenized+[3])
 
-            pbar.update(batch_count+2)
+#             pbar.update(batch_count+2)
 
 
-    np.save(os.path.join(DATA_DIR,"mine_qa.npy"),np.array(lst,dtype=np.uint16))
-    print(f"Total Tokens (Mine-QA): {count}")
+#     np.save(os.path.join(DATA_DIR,"mine_qa.npy"),np.array(lst,dtype=np.uint16))
+#     print(f"Total Tokens (Mine-QA): {count}")
 
 if __name__=="__main__":
     os.makedirs(DATA_DIR,exist_ok=True)
     print("Starting Preprocessing...")
 
-    # print("Downloading Climbmix...")
-    # climbmix_2bil()
-
-    print("Downloading Minecraft Wiki...")
-    mine_wiki()
-
-    print("Downloading Minecraft QA...")
-    mine_qa()
+    print("Downloading Climbmix...")
+    climbmix_2bil()
 
