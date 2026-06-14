@@ -151,7 +151,10 @@ class MultiHeadAttention(nn.Module):
         super().__init__()
 
         self.config=config
+
         assert config.head_size*config.num_heads==config.d_model," Dims don't match, check Config params "
+        assert config.head_size%2==0,"Head size must be even for RoPE"
+        assert config.num_heads%config.kv_heads==0,"Number of heads must be divisible by kv_heads"
 
         self.q=nn.Linear(config.d_model,config.num_heads*config.head_size,bias=False)
         self.k=nn.Linear(config.d_model,config.kv_heads*config.head_size,bias=False)
@@ -166,6 +169,7 @@ class MultiHeadAttention(nn.Module):
         self.head_size = config.head_size
 
         self.ve_gate=nn.Linear(config.value_embed_rank,config.num_heads,bias=False) if has_ve(config.num_layers,layer_idx) else None
+        self.ratio=config.num_heads//config.kv_heads
 
     def forward(self,x,ve=None):
         ''' 
@@ -196,10 +200,8 @@ class MultiHeadAttention(nn.Module):
 
         q,k=self.rope(q,k)
         
-        ratio=self.config.num_heads//self.config.kv_heads
-
-        k=k.repeat_interleave(ratio,dim=2)
-        v=v.repeat_interleave(ratio,dim=2)
+        k=k.repeat_interleave(self.ratio,dim=2)
+        v=v.repeat_interleave(self.ratio,dim=2)
 
         if self.ve_gate is not None :
             ve=ve.view(B,T,self.config.num_heads,self.config.head_size)
@@ -344,8 +346,7 @@ class Block(nn.Module):
         Returns:
             Tensor of shape (B,T,C)
         '''
-        logits=self.attention(self.PreNorm1(x),ve)
-        x=x+self.scale*logits
+        x=x+self.scale*self.attention(self.PreNorm1(x),ve)
         x=x+self.scale*self.Mlp(self.PreNorm2(x))
         return x
     
@@ -400,7 +401,7 @@ class GPT(nn.Module):
         '''
         super().__init__()
 
-        self.embed=nn.Embedding(config.vocab_size,config.d_model)
+        self.embed=nn.Embedding(config.vocab_size,config.d_model,)
         self.blocks=nn.ModuleList([Block(config,i+1) for i in range(config.num_layers)])
         self.final_norm=nn.RMSNorm(config.d_model,eps=1e-5)
         self.lm_head=nn.Linear(config.d_model,config.vocab_size,bias=False)
