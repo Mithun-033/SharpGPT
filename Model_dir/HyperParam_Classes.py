@@ -53,7 +53,7 @@ class OptimHParams:
     weight_decay : int = 0.1
     lr_decay : float = 0.1
     final_lr : float = lr * lr_decay
-    betas : list = [0.9,0.95]
+    betas : tuple = (0.9, 0.95)
 
 @dataclass 
 class OptimHParams_FT:
