@@ -17,7 +17,7 @@ echo "Torch packages installed successfully."
 
 #------------------------------------------------------------------------------------#
 
-pip install datasets tokenizers torchinfo
+pip install datasets tokenizers torchinfo tqdm json 
 echo "All dependencies installed successfully."
 
 #------------------------------------------------------------------------------------#
