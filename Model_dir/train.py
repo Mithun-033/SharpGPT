@@ -81,7 +81,7 @@ def train(Model):
     with tqdm(total=6_000_000_000, desc="Training", unit="Tokens") as pbar:
         opt_steps=0
         batch_count=0
-        for i in range(10):
+        for i in range(15):
             file_path=f"Pre_train_data/climbmix_{i+1}.npy"
             if val_dataloader is None:
                 train_dataloader,val_dataloader=get_dataloaders(gp, tp, file_path)
@@ -135,11 +135,9 @@ def train(Model):
                     val_loss_sum=0
                     val_batch_count=0
                     
-                    torch.save({
-                        "model": model.state_dict(),
-                        "optimizer": optimizer.state_dict(),
-                        "step": opt_steps
-                    },"checkpoint.pt")
+                    torch.save(model.state_dict(),"model_checkpoint.pt")
+                    torch.save({"optimizer_state_dict": optimizer.state_dict(),
+                                "step": opt_steps},"optimizer_checkpoint.pt")
 
                     model.eval()
                     with torch.no_grad():
@@ -160,6 +158,10 @@ def train(Model):
                             "val_loss": val_loss_sum/val_batch_count
                         },f)
                         f.write("\n")
+
+        torch.save(model.state_dict(),"epoch_model.pt")     
+        torch.save({"optimizer_state_dict": optimizer.state_dict(),
+                    "step": opt_steps},"epoch_optimizer.pt")       
 
 if __name__=="__main__":
     model=GPT(Config())
