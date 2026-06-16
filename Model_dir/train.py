@@ -121,7 +121,7 @@ def train(Model):
                             "loss": loss_sum/20,
                             "toks_per_sec": (20*tp.grad_batches*gp.cwl)/time_taken
                         },f)                        
-                    f.write("\n")
+                        f.write("\n")
 
                     pbar.set_postfix({
                         "loss": f"{loss_sum/20:.4f}",
