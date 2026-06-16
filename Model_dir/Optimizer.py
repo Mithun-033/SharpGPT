@@ -62,32 +62,32 @@ class HybridOptim():
         self.scheduler_adam1=optim.lr_scheduler.LinearLR(
             self.opt1,
             start_factor=0.2,
-            total_iters=int(0.1 * total_steps),
+            total_iters=int(0.05 * total_steps),
         )
         self.scheduler_adam2=optim.lr_scheduler.CosineAnnealingLR(
             self.opt1,
-            T_max=int(total_steps*0.9),
+            T_max=int(total_steps*0.95),
             eta_min=self.config.final_lr
         )
         self.scheduler_muon1=optim.lr_scheduler.LinearLR(
             self.opt2,
             start_factor=0.2,
-            total_iters=int(0.1 * total_steps),
+            total_iters=int(0.05 * total_steps),
         )
         self.scheduler_muon2=optim.lr_scheduler.CosineAnnealingLR(
             self.opt2,
-            T_max=int(total_steps*0.9),
+            T_max=int(total_steps*0.95),
             eta_min=self.config.final_lr
         )
         self.Adamw=optim.lr_scheduler.SequentialLR(
             self.opt1,
             schedulers=[self.scheduler_adam1,self.scheduler_adam2],
-            milestones=[int(0.1 * total_steps)]
+            milestones=[int(0.05 * total_steps)]
         )
         self.Muon=optim.lr_scheduler.SequentialLR(
             self.opt2,
             schedulers=[self.scheduler_muon1,self.scheduler_muon2],
-            milestones=[int(0.1 * total_steps)]
+            milestones=[int(0.05 * total_steps)]
         )
 
 
