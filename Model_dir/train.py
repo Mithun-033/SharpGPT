@@ -150,7 +150,6 @@ def train(Model):
                                 val_loss_sum+=loss.item()
                                 val_batch_count+=1
 
-                    print(f"Validation Loss: {val_loss_sum/val_batch_count:.4f}")
                     model.train()
                     with open("val_log.json","a") as f:
                         json.dump({
