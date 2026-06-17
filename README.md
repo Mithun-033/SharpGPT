@@ -1,10 +1,10 @@
-# SharpGPT
+# PocketGPT
 
 A GPT-style autoregressive language model implemented from scratch using PyTorch and PyTorch Lightning.
 
-The project covers tokenizer training, large-scale pretraining, Transformer architecture implementation, custom optimization, dataset preparation, and training infrastructure.
+The project covers tokenizer training, large-scale pretraining, Transformer architecture implementation, custom optimizer, dataset preparation, and Intruction Finetuning.
 
-SharpGPT is pretrained on **6 billion tokens of NVIDIA ClimbMix** and serves as a foundation for experimentation with modern language model architectures and efficient training techniques.
+PocketGPT is pretrained on **5 billion tokens of NVIDIA ClimbMix** and serves as a foundation for experimentation with modern language model architectures and efficient training techniques.
 
 ---
 
@@ -13,7 +13,7 @@ SharpGPT is pretrained on **6 billion tokens of NVIDIA ClimbMix** and serves as 
 | Parameter | Value |
 |------------|------------|
 | Architecture | Decoder-only Transformer |
-| Training Tokens | 6 Billion |
+| Training Tokens | 5 Billion |
 | Context Length | 1,024 |
 | Layers | 20 |
 | Hidden Dimension | 1,024 |
@@ -39,8 +39,7 @@ SharpGPT is pretrained on **6 billion tokens of NVIDIA ClimbMix** and serves as 
 - RMSNorm
 - Pre-Norm Transformer blocks
 - Grouped Query Attention (GQA)
-- Query RMSNorm
-- Key RMSNorm
+- Query & Key RMSNorm
 - ReLU² feed-forward networks
 - DeepSeek-style residual scaling
 - Alternate-layer value embeddings
@@ -58,7 +57,6 @@ SharpGPT is pretrained on **6 billion tokens of NVIDIA ClimbMix** and serves as 
 ### Data Pipeline
 
 - Large-scale corpus preprocessing
-- Efficient token generation workflow
 - Streaming-compatible dataset preparation
 - Optimized PyTorch DataLoaders
 - High-throughput batch generation
@@ -66,7 +64,7 @@ SharpGPT is pretrained on **6 billion tokens of NVIDIA ClimbMix** and serves as 
 ### Tokenization
 
 - Custom tokenizer training pipeline
-- 32K vocabulary tokenizer
+- 32K/49K vocabulary tokenizers (ByteLevel & Whitespace)
 - Reusable tokenizer artifacts
 
 ---
@@ -75,14 +73,14 @@ SharpGPT is pretrained on **6 billion tokens of NVIDIA ClimbMix** and serves as 
 
 ### Base Pretraining
 
-- **6 Billion Tokens of NVIDIA ClimbMix**
+- **5 Billion Tokens of NVIDIA ClimbMix**
 
 ---
 
 ## Repository Structure
 
 ```text
-Project/
+PocketGPT/
 │
 ├── Model_dir/
 │   ├── DataLoaders.py
@@ -104,12 +102,16 @@ Project/
 │   └── tokenizers_benchmark.py
 │
 ├── val_loss/
-│   ├── training_log.json
-│   ├── val_delta_loss.png
-│   └── val_loss.png
+│   ├── perplexity.png
+│   ├── train_log.json
+│   ├── train_val_loss.png
+│   ├── val_delta.png
+│   └── val_log.json
 │
 ├── LICENSE
-└── README.md
+├── README.md
+├── tokenizer.sh
+└── train.sh
 ```
 
 ---
@@ -131,6 +133,7 @@ Each Transformer block applies:
 - Query, Key, and Value projections
 - Query & Key RMSNorm
 - Rotary positional encoding
+- Gated Value Embeddings 
 - Causal self-attention
 - Output projection
 
@@ -208,7 +211,7 @@ where **L** is the number of Transformer layers.
 
 ## Project Goal
 
-SharpGPT is an end-to-end language model training project focused on building modern GPT-style architectures from the ground up.
+PocketGPT is an end-to-end language model training project focused on building modern GPT-style architectures from the ground up.
 
 The project explores:
 
