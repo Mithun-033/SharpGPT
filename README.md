@@ -1,4 +1,4 @@
-# PocketGPT
+# PocketGPT — Efficient Language Modeling at 325M Parameters
 
 ![PocketGPT Cover](PocketGPT.png)
 
