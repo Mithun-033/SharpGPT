@@ -1,5 +1,7 @@
 # PocketGPT
 
+![PocketGPT Cover](PocketGPT.png)
+
 A GPT-style autoregressive language model implemented from scratch using PyTorch and PyTorch Lightning.
 
 The project covers tokenizer training, large-scale pretraining, Transformer architecture implementation, custom optimizer, dataset preparation, and Intruction Finetuning.
