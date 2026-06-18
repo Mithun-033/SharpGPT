@@ -13,7 +13,7 @@ PocketGPT is pretrained on **5 billion tokens of NVIDIA ClimbMix** and serves as
 
 | Benchmark | GPT-2 Medium (355M) | Pythia 410M | PocketGPT (325M) |
 |------------|-------------------:|------------:|-----------------:|
-| HellaSwag | ~42 | ~43 | **37.95** |
+| HellaSwag | **37.52** | ~43 | **37.95** |
 | WinoGrande | ~54 | ~55 | **53.35** |
 | ARC Easy | ~50 | ~55 | **52.86** |
 | ARC Challenge | ~29 | ~31 | **31.40** |
