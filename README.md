@@ -1,17 +1,17 @@
-# PocketGPT — Efficient Language Modeling at 325M Parameters
+# PocketGPT — Efficient Language Modeling at 320M Parameters
 
 ![PocketGPT Cover](PocketGPT.png)
 
 A GPT-style autoregressive language model implemented from scratch using PyTorch and PyTorch Lightning.
 
-The project covers tokenizer training, large-scale pretraining, Transformer architecture implementation, custom optimizer, dataset preparation, and Intruction Finetuning.
+The project covers tokenizer training, large-scale pretraining, Transformer architecture implementation, custom optimizer, dataset preparation.
 
 PocketGPT is pretrained on **5 billion tokens of NVIDIA ClimbMix** and serves as a foundation for experimentation with modern language model architectures and efficient training techniques.
 
 ---
 ## Base Model Benchmark Comparison
 
-| Benchmark     | GPT-2 Medium (355M) | Pythia 410M | PocketGPT (325M) |
+| Benchmark     | GPT-2 Medium (355M) | Pythia 410M | PocketGPT (320M) |
 |---------------|--------------------:|------------:|-----------------:|
 | HellaSwag     | **37.52**           | **40.9**    | **37.95** |
 | WinoGrande    | **52.5**            | **53.7**    | **53.35** |
@@ -48,7 +48,8 @@ PocketGPT is pretrained on **5 billion tokens of NVIDIA ClimbMix** and serves as
 | Backbone Parameters | ~214.23M |
 | Token Embeddings | ~106.66M |
 | Value Embeddings | ~503.33M |
-| Total Parameters | ~824.22M |
+| Total Parameters | ~320.89M |
+| Total Parameters with VE | ~824.22M |
 
 ---
 
@@ -103,111 +104,36 @@ PocketGPT is pretrained on **5 billion tokens of NVIDIA ClimbMix** and serves as
 
 ```text
 PocketGPT/
-│
-├── Model_dir/
-│   ├── DataLoaders.py
-│   ├── HyperParam_Classes.py
-│   ├── Model_Classes.py
+├── GPT/
+│   ├── Hyperparams.py
+│   ├── Model.py
 │   ├── Optimizer.py
-│   ├── prepare_pretraining_data.py
-│   ├── smoke_test.py
-│   └── train.py
-│
-├── tokenizers_dir/
-│   ├── Compression_ratios.json
+│   ├── inference.py
+│   └── smoke_test.py
+├── scripts/
+│   ├── dependencies.sh
+│   ├── tokenizer.sh
+│   └── train.sh
+├── tokenizer/
 │   ├── DataPrep.py
+│   ├── Tokenizer_train.py
+│   ├── tokenizers_benchmark.py
+│   ├── Compression_ratios.json
 │   ├── tokenizer_32k_ByteLevel.json
 │   ├── tokenizer_32k_whitespace.json
 │   ├── tokenizer_49k_ByteLevel.json
-│   ├── tokenizer_49k_whitespace.json
-│   ├── Tokenizer_train.py
-│   └── tokenizers_benchmark.py
-│
-├── val_loss/
-│   ├── perplexity.png
-│   ├── train_log.json
-│   ├── train_val_loss.png
-│   ├── val_delta.png
-│   └── val_log.json
-│
-├── LICENSE
-├── README.md
-├── tokenizer.sh
-└── train.sh
+│   └── tokenizer_49k_whitespace.json
+├── train/
+│   ├── DataLoaders.py
+│   ├── data.py
+│   ├── eval.py
+│   └── train.py
+├── val_loss (upto 2.3bil toks)/
+├── PocketGPT.png
+└── LICENSE
 ```
 
 ---
-
-## Architecture Overview
-
-### Embedding Layer
-
-Input tokens are mapped into dense vector representations through a learned embedding table.
-
-The language modeling head shares weights with the token embeddings through weight tying.
-
----
-
-### Attention Layer
-
-Each Transformer block applies:
-
-- Query, Key, and Value projections
-- Query & Key RMSNorm
-- Rotary positional encoding
-- Gated Value Embeddings 
-- Causal self-attention
-- Output projection
-
----
-
-### Feed Forward Network
-
-```text
-Input
-  │
-  ▼
-Linear Expansion
-  │
-  ▼
-ReLU²
-  │
-  ▼
-Linear Projection
-  │
-  ▼
-Output
-```
-
----
-
-### Transformer Block
-
-```text
-Input
- │
- ├── RMSNorm
- ├── Attention
- ├── Residual
- │
- ├── RMSNorm
- ├── MLP
- ├── Residual
- │
- ▼
-Output
-```
-
-Residual branches are scaled by:
-
-```text
-1 / √(2L)
-```
-
-where **L** is the number of Transformer layers.
-
----
-
 
 ## Available Tokenizers
 
