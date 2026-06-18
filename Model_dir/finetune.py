@@ -33,95 +33,116 @@ def get_optimizer(model, tp, gp, epochs):
     )
     return optimizer
 
-def finetune(model,epochs=2):
-    model.to(device)
+def finetune(Model,epochs=2):
+    tp=TrainParams()
+    gp=Config()
+
+    model=Model.to(device)
     model=torch.compile(model).to(device)
 
-    gp=Config()
-    tp=TrainParams()
-    optimizer=get_optimizer(model, tp, gp, epochs)
+    optimizer=get_optimizer(model,tp,gp)
     loss_fn=nn.CrossEntropyLoss()
 
-    opt_steps=0
-    with tqdm(total=(47509085 + 8026886)*epochs, desc="Fine-tuning", unit="Tokens") as pbar:
-        for epoch in range(epochs):
-            file_paths=["../Pre_train_data/mine_qa.npy","../Pre_train_data/mine_wiki.npy"]
+    val_dataloader=None
 
-            for file in file_paths:
-                train_dataloader,val_dataloader=get_dataloaders(gp, tp, file)
+    with tqdm(total=2_600_000_000, desc="Training", unit="Tokens") as pbar:
+        opt_steps=torch.load("optimizer_checkpoint.pt",map_location=device)["step"]
+        batch_count=0
+        for i in range(1):
+            file_path=...
+            if val_dataloader is None:
+                train_dataloader,val_dataloader=get_dataloaders(gp, tp, file_path)
+            else:
+                train_dataloader,_=get_dataloaders(gp, tp, file_path)
 
-                batch_count=0
-                loss_sum=0
+            loss_sum=0
+            start=time.time()
 
-                start=time.time()
+            model.train()
 
-                model.train()
+            for x,y in train_dataloader:
+                x=x.to(device,non_blocking=True) 
+                y=y.to(device,non_blocking=True)
+                with torch.autocast(device_type="cuda",dtype=torch.bfloat16):
+                    out=model(x)
+                    loss=loss_fn(out.view(-1,gp.vocab_size),y.view(-1))
+                    loss=loss/(tp.grad_batches/tp.batch_size)
+                    loss.backward()
+                    
+                loss_sum+=loss.item()
+                batch_count+=tp.batch_size
+                pbar.update(tp.batch_size*gp.cwl)
 
-                for x,y in train_dataloader:
-                    x=x.to(device,non_blocking=True)
-                    y=y.to(device,non_blocking=True)
-                    with torch.autocast(device_type="cuda",dtype=torch.bfloat16):
-                        out=model(x)
-                        loss=loss_fn(out.view(-1,gp.vocab_size),y.view(-1))
-                        loss=loss/(tp.grad_batches/tp.batch_size)
-                        loss.backward()
+                if batch_count>=tp.grad_batches:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(),1.0)
+                    optimizer.step()
+                    optimizer.zero_grad()
+                    batch_count=0
+                    opt_steps+=1
 
-                    loss_sum+=loss.item()
-                    batch_count+=tp.batch_size
-                    pbar.update(tp.batch_size*gp.cwl)
+                if opt_steps > 0 and opt_steps % 20 == 0 and batch_count == 0:
+                    time_taken=time.time()-start
+                    with open("train_log.json","a") as f:                        
+                        json.dump({
+                            "step": opt_steps,
+                            "train_loss": loss_sum/20,
+                            "toks_per_sec": (20*tp.grad_batches*gp.cwl)/time_taken
+                        },f)                        
+                        f.write("\n")
 
-                    if batch_count>=tp.grad_batches:
-                        torch.nn.utils.clip_grad_norm_(model.parameters(),1.0)
-                        optimizer.step()
-                        optimizer.zero_grad()
-                        batch_count=0
-                        opt_steps+=1
+                    pbar.set_postfix({
+                        "train_loss": f"{loss_sum/20:.4f}"
+                    })
+                    
+                    loss_sum=0
+                    start=time.time()
 
-                    if opt_steps > 0 and opt_steps % 20 == 0 and batch_count == 0:
-                        time_taken=time.time()-start
-                        print(f"Loss: {loss_sum/20:.4f}, Time : {time_taken:.2f} seconds, Toks/sec : {(20*tp.grad_batches*gp.cwl)/time_taken:.2f}")
-                        loss_sum=0
-                        start=time.time()
+                if opt_steps > 0 and opt_steps % 100 == 0 and batch_count == 0:
+                    val_loss_sum=0
+                    val_batch_count=0
+                    
+                    if opt_steps % 200 == 0:
+                        torch.save(model.state_dict(),"model_checkpoint.pt")
+                        torch.save({"optimizer_state_dict": optimizer.state_dict(),
+                                "step": opt_steps},"optimizer_checkpoint.pt")
 
-                    if opt_steps > 0 and opt_steps % 100 == 0 and batch_count == 0:
-                        val_loss_sum=0
-                        val_batch_count=0
+                    model.eval()
+                    with torch.no_grad():
+                        with torch.autocast(device_type="cuda",dtype=torch.bfloat16):
+                            for x,y in val_dataloader:
+                                x=x.to(device,non_blocking=True)
+                                y=y.to(device,non_blocking=True)
+                                out=model(x)
+                                loss=loss_fn(out.view(-1,gp.vocab_size),y.view(-1))
+                                val_loss_sum+=loss.item()
+                                val_batch_count+=1
 
-                        torch.save({
-                            "model": model.state_dict(),
-                            "step": opt_steps
-                        },"checkpoint_finetuned.pt")
+                    pbar.set_postfix({
+                        "val_loss": f"{val_loss_sum/val_batch_count:.4f}"})
+                    
+                    with open("val_log.json","a") as f:
+                        json.dump({
+                            "step": opt_steps,
+                            "val_loss": val_loss_sum/val_batch_count
+                        },f)
+                        f.write("\n")
+                    model.train()
 
-                        model.eval()
-                        with torch.no_grad():
-                            with torch.autocast(device_type="cuda",dtype=torch.bfloat16):
-                                for x,y in val_dataloader:
-                                    x=x.to(device,non_blocking=True)
-                                    y=y.to(device,non_blocking=True)
-                                    out=model(x)
-                                    loss=loss_fn(out.view(-1,gp.vocab_size),y.view(-1))
-                                    val_loss_sum+=loss.item()
-                                    val_batch_count+=1
-
-                        print(f"Validation Loss: {val_loss_sum/val_batch_count:.4f}")
-                        model.train()
-                        with open("training_log_finetuned.json","a") as f:
-                            json.dump({
-                                "step": opt_steps,
-                                "val_loss": val_loss_sum/val_batch_count
-                            },f)
-                            f.write("\n")
-            torch.save(model.state_dict(),f"finetuned_model_{epoch}.pt")
+        torch.save(model.state_dict(),"final_model.pt")   
             
 if __name__ == "__main__":
-    gp=Config()
-    tp=TrainParams()
+    state_dict=torch.load("model_checkpoint.pt",map_location=device)
 
-    print("Loading model...")
-    model=GPT(gp)
-    model.load_state_dict(torch.load("checkpoint.pt")["model"])
-    print("Model loaded successfully.")
+    new_state_dict={}
 
-    summary(model, input_size=(tp.batch_size, gp.cwl), dtypes=[torch.long], device=device)
+    for k,v in state_dict.items():
+        if k.startswith("_orig_mod."):
+            k=k[len("_orig_mod."):]
+        new_state_dict[k]=v
+
+    model=GPT(Config()).to(device)
+    model.load_state_dict(new_state_dict)
+
+    summary(model,input_size=(1,Config().cwl),dtypes=[torch.long])
 
     finetune(model, epochs=2)
