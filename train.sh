@@ -1,39 +1,21 @@
 #!/bin/bash
 
-echo "Downloading required torch version..."
-
-TORCH_VERSION=$(python -c "import torch; print(torch.__version__)")
-echo "PyTorch version: $TORCH_VERSION"
-
-CUDA_VERSION=$(python -c "import torch; print("cu"+str(int(float(torch.version.cuda)*10)))")
-echo "CUDA version: $CUDA_VERSION"
-
-echo "Uninstalling existing torch packages..."
-pip uninstall -y torch torchvision torchaudio 
-
-echo "Installing torch packages with specific CUDA version..."
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/$CUDA_VERSION
-echo "Torch packages installed successfully."
-
-#------------------------------------------------------------------------------------#
-
-pip install datasets tokenizers torchinfo tqdm json 
-echo "All dependencies installed successfully."
-
-#------------------------------------------------------------------------------------#
-
 cd SharpGPT
 
 echo "Downloading pre-trained data..."
 
-python prepare_pretrain_data.py
+python train/data.py
 
 echo "Pre-trained data downloaded successfully."
 
 #------------------------------------------------------------------------------------#
+echo "training tokenizer..."
+
+chmod +x tokenizer.sh
+./tokenizer.sh
 
 echo "Starting training process..."
-python train.py
+python train/train.py
 
 
 
