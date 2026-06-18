@@ -52,6 +52,7 @@ PocketGPT is pretrained on **5 billion tokens of NVIDIA ClimbMix** and serves as
 | Total Parameters with VE | ~824.22M |
 
 ---
+> Value Embeddings add very little to training FLOPs
 
 ## Features
 
