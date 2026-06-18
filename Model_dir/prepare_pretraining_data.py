@@ -3,10 +3,15 @@ import os
 from tqdm import tqdm
 from datasets import load_dataset
 from tokenizers import Tokenizer
+import random
 
 climbmix_path="karpathy/climbmix-400b-shuffle"
+IF_path="thunder-research-group/SNU_Thunder-synthetic-instruction-following"
+IF_path_2="iamketan25/alpaca-instructions-dataset"
 
 DATA_DIR="Pre_train_data"
+DATA_DIR_IF="IF_data"
+
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"]="1"
 
 tok=Tokenizer.from_file("tokenizers_dir/tokenizer_49k_whitespace.json")
@@ -53,6 +58,64 @@ def climbmix_5bil():
             if shard>25:
                 break
 
+def intruction_finetune():
+    '''
+    '''
+
+    ds1=load_dataset(
+        IF_path,
+        "english",
+        streaming=True,
+        split="english",
+        )
+    ds2=load_dataset(
+        IF_path_2,
+        streaming=True,
+        split="train",
+        )
+    
+    count1=0
+    count2=0
+
+    lst=[]
+
+    with tqdm(total=50_000_000, desc="Instruction Finetuning", unit="Tokens", mininterval=0.1,miniters=1) as pbar:
+        while True:
+            rand=random.random()*10
+
+            if rand>3:
+                row=next(iter(ds1))
+                tokenised=tok.encode("Human: "+row["question"]+" Assistant: "+row["response"]).ids
+
+                while len(tokenised)<256:
+                    row=next(iter(ds1))
+                    tokenised=tok.encode("Human: "+row["question"]+" Assistant: "+row["response"]).ids
+                
+                count1+=len(tokenised)
+                lst.extend([2]+tokenised+[3])
+                pbar.update(len(tokenised))
+
+            else:
+                row=next(iter(ds2))
+                tokenised=tok.encode(row["prompt"]+row["chosen"]).ids
+
+                while len(tokenised)<128:
+                    row=next(iter(ds2))
+                    tokenised=tok.encode(row["prompt"]+row["chosen"]).ids
+                    
+                count2+=len(tokenised)
+
+                lst.extend([2]+tokenised+[3])
+                pbar.update(len(tokenised))
+
+            
+            if count1+count2>=50_000_000:
+
+                np.save(os.path.join(DATA_DIR_IF,"IF_dataset.npy"),np.array(lst,dtype=np.uint16))
+                print(f"Total from IF Dataset 1: {count1} tokens.")
+                print(f"Total from IF Dataset 2: {count2} tokens.")
+                break
+
 if __name__=="__main__":
     os.makedirs(DATA_DIR,exist_ok=True)
     print("Starting Preprocessing...")
@@ -60,3 +123,6 @@ if __name__=="__main__":
     print("Downloading Climbmix...")
     climbmix_5bil()
 
+    print("Downloading Instruction Finetuning Data...")
+    os.makedirs(DATA_DIR_IF,exist_ok=True)
+    intruction_finetune()
