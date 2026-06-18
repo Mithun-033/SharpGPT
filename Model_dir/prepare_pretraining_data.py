@@ -8,6 +8,7 @@ import random
 climbmix_path="karpathy/climbmix-400b-shuffle"
 IF_path="thunder-research-group/SNU_Thunder-synthetic-instruction-following"
 IF_path_2="iamketan25/alpaca-instructions-dataset"
+IF_path_3="m-a-p/CodeFeedback-Filtered-Instruction"
 
 DATA_DIR="Pre_train_data"
 DATA_DIR_IF="IF_data"
@@ -58,6 +59,7 @@ def climbmix_5bil():
             if shard>25:
                 break
 
+
 def intruction_finetune():
     '''
     '''
@@ -66,35 +68,56 @@ def intruction_finetune():
         IF_path,
         "english",
         streaming=True,
-        split="english",
+        split="train",
         )
     ds2=load_dataset(
         IF_path_2,
         streaming=True,
         split="train",
         )
+    ds3=load_dataset(
+        IF_path_3,
+        streaming=True,
+        split="train"
+    )
     
     it1=iter(ds1)
     it2=iter(ds2)
-    
+    it3=iter(ds3)
+
     count1=0
     count2=0
+    count3=0
 
     lst=[]
 
-    with tqdm(total=50_000_000, desc="Instruction Finetuning", unit="Tokens", mininterval=0.1,miniters=1) as pbar:
+    target=50_000_000
+
+    with tqdm(total=target, desc="Instruction Finetuning", unit="Tokens", mininterval=0.1,miniters=1) as pbar:
         while True:
             rand=random.random()*10
 
-            if rand>3:
+            if rand>2:
                 row=next(it1)
                 tokenised=tok.encode("Human: "+row["question"]+" Assistant: "+row["response"]).ids
 
-                while len(tokenised)<256:
+                while len(tokenised)<128:
                     row=next(it1)
                     tokenised=tok.encode("Human: "+row["question"]+" Assistant: "+row["response"]).ids
                 
                 count1+=len(tokenised)
+                lst.extend([2]+tokenised+[3])
+                pbar.update(len(tokenised))
+
+            elif rand>1 and rand<2:
+                row=next(it3)
+                tokenised=tok.encode("Human: "+row["query"]+" Assistant: "+row["answer"]).ids
+
+                while row["lang"]!="python":
+                    row=next(it3)
+                    tokenised=tok.encode("Human: "+row["query"]+" Assistant: "+row["answer"]).ids
+
+                count3+=len(tokenised)
                 lst.extend([2]+tokenised+[3])
                 pbar.update(len(tokenised))
 
@@ -105,7 +128,6 @@ def intruction_finetune():
                 while len(tokenised)<128:
                     row=next(it2)
                     tokenised=tok.encode(row["prompt"]+row["chosen"]).ids
-
                     
                 count2+=len(tokenised)
 
@@ -113,11 +135,12 @@ def intruction_finetune():
                 pbar.update(len(tokenised))
 
             
-            if count1+count2>=50_000_000:
+            if count1+count2+count3>=target:
 
-                np.save(os.path.join(DATA_DIR_IF,"IF_dataset.npy"),np.array(lst,dtype=np.uint16))
+                np.save(os.path.join(DATA_DIR_IF,"IF_dataset_2.npy"),np.array(lst,dtype=np.uint16))
                 print(f"Total from IF Dataset 1: {count1} tokens.")
                 print(f"Total from IF Dataset 2: {count2} tokens.")
+                print(f"Total from IF Dataset 3: {count3} tokens.")
                 break
 
 if __name__=="__main__":
