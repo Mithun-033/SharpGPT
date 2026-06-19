@@ -49,10 +49,10 @@ PocketGPT is pretrained on **5 billion tokens of NVIDIA ClimbMix** and serves as
 | Token Embeddings | ~106.66M |
 | Value Embeddings | ~503.33M |
 | Total Parameters | ~320.89M |
-| Total Parameters with VE | ~824.22M |
 
+
+> Value Embeddings add very little to training FLOPs
 ---
-
 ## Features
 
 ### Architecture
@@ -71,32 +71,17 @@ PocketGPT is pretrained on **5 billion tokens of NVIDIA ClimbMix** and serves as
 ### Training Infrastructure
 
 - Custom Muon–AdamW hybrid optimizer
-- PyTorch Lightning integration
+- Optimized PyTorch DataLoaders
 - Dataclass-based configuration system
 - Modular training pipeline
 - Reproducible experiment setup
 - Custom learning rate scheduling
-
-### Data Pipeline
-
-- Large-scale corpus preprocessing
-- Streaming-compatible dataset preparation
-- Optimized PyTorch DataLoaders
-- High-throughput batch generation
 
 ### Tokenization
 
 - Custom tokenizer training pipeline
 - 32K/49K vocabulary tokenizers (ByteLevel & Whitespace)
 - Reusable tokenizer artifacts
-
----
-
-## Training Data
-
-### Base Pretraining
-
-- **5 Billion Tokens of NVIDIA ClimbMix**
 
 ---
 
@@ -129,8 +114,14 @@ PocketGPT/
 │   ├── eval.py
 │   └── train.py
 ├── val_loss (upto 2.3bil toks)/
+│   ├── perplexity.png
+│   ├── train_log.json
+│   ├── train_val_loss.png
+│   ├── val_delta.png
+│   └── val_log.json
+├── LICENSE
 ├── PocketGPT.png
-└── LICENSE
+└── README.md
 ```
 
 ---
