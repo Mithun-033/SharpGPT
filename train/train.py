@@ -1,6 +1,8 @@
 import time
 import warnings
 from tqdm import tqdm
+import sys
+
 import torch
 import torch.nn as nn
 
@@ -89,7 +91,7 @@ def train(Model):
 
     val_dataloader=None
 
-    with tqdm(total=5_000_000_000, desc="Training", unit="Tokens") as pbar:
+    with tqdm(total=5_000_000_000, desc="Training", unit="Tokens", file = sys.stdout) as pbar:
         opt_steps=torch.load("optimizer_checkpoint.pt",map_location=device)["step"]
         batch_count=0
         for i in range(0,25):
